@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: planshift-postgres
+    environment:
+      POSTGRES_DB: planshift
+      POSTGRES_USER: planshift
+      POSTGRES_PASSWORD: planshift
+    ports:
+      - "5432:5432"
+    volumes:
+      - planshift-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U planshift -d planshift"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: planshift-backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: planshift
+      DB_USER: planshift
+      DB_PASSWORD: planshift
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    container_name: planshift-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  planshift-pgdata:

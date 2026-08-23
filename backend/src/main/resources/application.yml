@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: planshift-backend
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:planshift}
+    username: ${DB_USER:planshift}
+    password: ${DB_PASSWORD:planshift}
+  sql:
+    init:
+      mode: always
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+server:
+  port: ${SERVER_PORT:8080}
