@@ -1,0 +1,34 @@
+# --- Java / Maven (backend) ---
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# --- Node / React (frontend) ---
+node_modules/
+dist/
+.vite/
+
+# --- Python (future ML experimentation) ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- Environment / secrets ---
+.env
+.env.local
+*.pem
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+.claude/
+*.iml
+.DS_Store
+
+# --- Docker ---
+docker-compose.override.yml
+
+# --- Logs ---
+*.log
