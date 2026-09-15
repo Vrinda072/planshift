@@ -189,7 +189,9 @@ docker compose up -d --build
 for local use as-is; change them if you're running this anywhere other
 people can reach it.
 
-Postgres on 5432, the API on 8080, the frontend on 5173.
+Postgres on 5432, the API on 8080, the frontend on 5173. If something on
+your machine already uses 5432, set `POSTGRES_HOST_PORT` in `.env` instead
+of fighting the conflict.
 
 The database starts empty:
 
