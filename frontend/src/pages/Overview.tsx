@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import type { Experiment } from "../api/types";
 import { changeClassName, formatChangeText, formatDate } from "../format";
 import { ExplainerPanel } from "../components/ExplainerPanel";
+import { Skeleton } from "../components/Skeleton";
 
 export function Overview() {
   const [experiments, setExperiments] = useState<Experiment[] | null>(null);
@@ -34,7 +35,7 @@ export function Overview() {
       <div className="section">
         <h2>Recent experiments</h2>
         {error && <div className="error-banner">{error}</div>}
-        {!error && experiments === null && <div className="loading-line">Loading...</div>}
+        {!error && experiments === null && <Skeleton rows={4} columns={4} />}
         {experiments && experiments.length === 0 && (
           <div className="empty-state">No experiments yet. Run your first one above.</div>
         )}

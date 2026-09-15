@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Experiment } from "../api/types";
 import { changeClassName, formatChangeText, formatDate } from "../format";
+import { Skeleton } from "../components/Skeleton";
 
 export function Experiments() {
   const [experiments, setExperiments] = useState<Experiment[] | null>(null);
@@ -78,6 +79,7 @@ export function Experiments() {
 
       <div className="section">
         <h2>All experiments</h2>
+        {!error && experiments === null && <Skeleton rows={4} columns={7} />}
         {experiments && experiments.length === 0 && <div className="empty-state">No experiments yet.</div>}
         {experiments && experiments.length > 0 && (
           <div className="table-scroll">

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { ExperimentQueryResult } from "../api/types";
 import { formatChangeText, formatMs } from "../format";
+import { Skeleton } from "../components/Skeleton";
 
 export function Regressions() {
   const [regressions, setRegressions] = useState<ExperimentQueryResult[] | null>(null);
@@ -18,7 +19,7 @@ export function Regressions() {
       <h1>Regressions</h1>
       <p className="subtitle">Every query result classified as a regression, across all experiments.</p>
       {error && <div className="error-banner">{error}</div>}
-      {!error && regressions === null && <div className="loading-line">Loading...</div>}
+      {!error && regressions === null && <Skeleton rows={4} columns={5} />}
       {regressions && regressions.length === 0 && (
         <div className="empty-state">No regressions detected in any experiment so far.</div>
       )}
