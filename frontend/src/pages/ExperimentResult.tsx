@@ -4,6 +4,7 @@ import { changeClassName, formatChangeText, formatMs } from "../format";
 import { PlanTreeCompare } from "../components/PlanTreeCompare";
 import { ExperimentProgress } from "../components/ExperimentProgress";
 import { InfoTooltip } from "../components/InfoTooltip";
+import { QueryComparisonChart } from "../components/QueryComparisonChart";
 import { useExperimentPolling } from "../hooks/useExperimentPolling";
 
 export function ExperimentResult() {
@@ -77,6 +78,9 @@ export function ExperimentResult() {
           Median of {experiment.repetitions} runs per configuration &middot; regression threshold{" "}
           {(experiment.thresholdFraction * 100).toFixed(0)}%
         </p>
+        <div className="card" style={{ marginBottom: 20 }}>
+          <QueryComparisonChart results={experiment.queryResults} />
+        </div>
         <div className="table-scroll">
           <table>
             <thead>
