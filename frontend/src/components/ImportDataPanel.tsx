@@ -67,7 +67,11 @@ export function ImportDataPanel({ onImported }: { onImported: (tableName: string
           {importing ? "Importing..." : "Import"}
         </button>
       </div>
-      {success && <div style={{ color: "var(--positive)", fontSize: 13, marginTop: 8 }}>{success}</div>}
+      {success && (
+        <div className="fade-section" style={{ color: "var(--positive)", fontSize: 13, marginTop: 8 }}>
+          {success}
+        </div>
+      )}
       {error && <div className="error-banner" style={{ marginTop: 12 }}>{error}</div>}
     </div>
   );

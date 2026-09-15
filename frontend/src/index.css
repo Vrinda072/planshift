@@ -665,6 +665,15 @@ tbody tr.no-entrance {
   color: var(--border-strong);
 }
 
+.pipeline-step-in {
+  display: inline-block;
+  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+}
+
+.fade-section {
+  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+}
+
 .category-tag {
   display: inline-flex;
   align-items: center;

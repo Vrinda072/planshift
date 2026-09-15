@@ -165,7 +165,7 @@ export function QueryBuilder() {
 
           {table && (
             <>
-              <div style={{ marginTop: 20 }}>
+              <div className="fade-section" style={{ marginTop: 20, animationDelay: "0ms" }}>
                 <div className="category-tag">Aggregate (optional)</div>
                 <div className="form-row" style={{ flexWrap: "wrap", marginTop: 8 }}>
                   <div className="form-field">
@@ -208,7 +208,7 @@ export function QueryBuilder() {
               </div>
 
               {!aggregateFunction && (
-                <div style={{ marginTop: 20 }}>
+                <div className="fade-section" style={{ marginTop: 20, animationDelay: "60ms" }}>
                   <div className="category-tag">Columns to select (none = all columns)</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                     {columns.map((c) => (
@@ -221,7 +221,7 @@ export function QueryBuilder() {
                 </div>
               )}
 
-              <div style={{ marginTop: 20 }}>
+              <div className="fade-section" style={{ marginTop: 20, animationDelay: "120ms" }}>
                 <div className="category-tag">Filter (optional)</div>
                 <div className="form-row" style={{ flexWrap: "wrap", marginTop: 8 }}>
                   <div className="form-field">
@@ -248,7 +248,7 @@ export function QueryBuilder() {
                 </div>
               </div>
 
-              <div style={{ marginTop: 20 }}>
+              <div className="fade-section" style={{ marginTop: 20, animationDelay: "180ms" }}>
                 <div className="category-tag">Order &amp; limit</div>
                 <div className="form-row" style={{ flexWrap: "wrap", marginTop: 8 }}>
                   <div className="form-field">
@@ -275,7 +275,7 @@ export function QueryBuilder() {
                 </div>
               </div>
 
-              <div style={{ marginTop: 20 }}>
+              <div className="fade-section" style={{ marginTop: 20, animationDelay: "240ms" }}>
                 <button className="btn" onClick={preview}>Preview SQL</button>
               </div>
 

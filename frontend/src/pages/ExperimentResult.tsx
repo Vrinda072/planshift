@@ -111,8 +111,8 @@ export function ExperimentResult() {
                           </button>
                         </div>
                       </td>
-                      <td className="mono">{formatMs(r.baselineMedianMs)}</td>
-                      <td className="mono">{formatMs(r.candidateMedianMs)}</td>
+                      <td className="mono"><AnimatedNumber value={r.baselineMedianMs} format={formatMs} /></td>
+                      <td className="mono"><AnimatedNumber value={r.candidateMedianMs} format={formatMs} /></td>
                       <td>
                         <span className={`change-value ${changeClassName(r.percentageChange)}`}>
                           {formatChangeText(r.percentageChange)}
