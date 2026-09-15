@@ -5,6 +5,7 @@ import type { PredictedImpact } from "../api/client";
 import type { QuerySpec, TableInfo } from "../api/types";
 import { ImportDataPanel } from "../components/ImportDataPanel";
 import { CopyButton } from "../components/CopyButton";
+import { AnimatedNumber } from "../components/AnimatedNumber";
 import { changeClassName, formatChangeText } from "../format";
 
 const OPERATORS = ["=", "!=", ">", "<", ">=", "<=", "LIKE"];
@@ -329,7 +330,7 @@ export function QueryBuilder() {
           {predictError && <div className="error-banner" style={{ marginTop: 12 }}>{predictError}</div>}
 
           {predictedImpact && (
-            <div className="card" style={{ marginTop: 16, background: "var(--bg)" }}>
+            <div className="card" style={{ marginTop: 16, background: "var(--bg)", animation: "fadeInUp var(--dur-base) var(--ease-out) both" }}>
               <div className="category-tag">
                 Predicted impact
                 <span style={{ marginLeft: 6, fontSize: 10, textTransform: "none", letterSpacing: 0 }}>
@@ -340,7 +341,7 @@ export function QueryBuilder() {
                 className={`change-value ${changeClassName(predictedImpact.predictedPercentageChange)}`}
                 style={{ fontSize: 24, marginTop: 6 }}
               >
-                {formatChangeText(predictedImpact.predictedPercentageChange)}
+                <AnimatedNumber value={predictedImpact.predictedPercentageChange} format={formatChangeText} />
               </div>
               <p style={{ color: "var(--text-tertiary)", fontSize: 12, marginTop: 8, marginBottom: 0 }}>
                 {predictedImpact.note} Current plan: <span className="mono">{predictedImpact.currentScanType}</span>,
