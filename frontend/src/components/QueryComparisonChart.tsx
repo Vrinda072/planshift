@@ -105,6 +105,8 @@ export function QueryComparisonChart({ results }: { results: ExperimentQueryResu
 
               {/* baseline bar */}
               <rect
+                className="chart-bar"
+                style={{ animationDelay: `${i * 40}ms` }}
                 x={BAR_AREA_X}
                 y={rowY + ROW_PAD_Y}
                 width={Math.max(baselineW, MIN_BAR_WIDTH)}
@@ -124,6 +126,8 @@ export function QueryComparisonChart({ results }: { results: ExperimentQueryResu
 
               {/* candidate bar */}
               <rect
+                className="chart-bar"
+                style={{ animationDelay: `${i * 40 + 60}ms` }}
                 x={BAR_AREA_X}
                 y={rowY + ROW_PAD_Y + BAR_HEIGHT + BAR_GAP}
                 width={Math.max(candidateW, MIN_BAR_WIDTH)}
