@@ -1,5 +1,7 @@
 # PLANSHIFT
 
+[![CI](https://github.com/Vrinda072/planshift/actions/workflows/ci.yml/badge.svg)](https://github.com/Vrinda072/planshift/actions/workflows/ci.yml)
+
 Database performance, without the guesswork.
 
 PLANSHIFT runs a fixed SQL workload against two PostgreSQL configurations,
