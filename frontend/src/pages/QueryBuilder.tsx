@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { QuerySpec, TableInfo } from "../api/types";
 import { ImportDataPanel } from "../components/ImportDataPanel";
+import { CopyButton } from "../components/CopyButton";
 
 const OPERATORS = ["=", "!=", ">", "<", ">=", "<=", "LIKE"];
 const AGGREGATES = ["", "COUNT", "SUM", "AVG", "MIN", "MAX"];
@@ -254,8 +255,11 @@ export function QueryBuilder() {
               </div>
 
               {previewSql && (
-                <div className="query-sql" style={{ marginTop: 12, background: "var(--bg)", padding: 12, borderRadius: 6, border: "1px solid var(--border-strong)" }}>
-                  {previewSql}
+                <div className="sql-block" style={{ marginTop: 12 }}>
+                  <div className="query-sql" style={{ background: "var(--bg)", padding: 12, borderRadius: 6, border: "1px solid var(--border-strong)" }}>
+                    {previewSql}
+                  </div>
+                  <CopyButton text={previewSql} />
                 </div>
               )}
               {previewError && <div className="error-banner" style={{ marginTop: 12 }}>{previewError}</div>}

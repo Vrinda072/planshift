@@ -1,6 +1,15 @@
 import { NavLink } from "react-router-dom";
+import { useHealthStatus } from "../hooks/useHealthStatus";
+
+const HEALTH_LABEL: Record<ReturnType<typeof useHealthStatus>, string> = {
+  checking: "Checking...",
+  online: "API connected",
+  offline: "API unreachable",
+};
 
 export function Nav() {
+  const health = useHealthStatus();
+
   return (
     <nav className="sidebar">
       <div className="brand">PLANSHIFT</div>
@@ -20,6 +29,10 @@ export function Nav() {
         <NavLink to="/regressions" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
           Regressions
         </NavLink>
+      </div>
+      <div className="nav-footer" title="Live status of GET /api/health, checked every 15s">
+        <span className={`health-dot ${health}`} />
+        {HEALTH_LABEL[health]}
       </div>
     </nav>
   );
