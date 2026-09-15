@@ -5,6 +5,7 @@ import { PlanTreeCompare } from "../components/PlanTreeCompare";
 import { ExperimentProgress } from "../components/ExperimentProgress";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { QueryComparisonChart } from "../components/QueryComparisonChart";
+import { AnimatedNumber } from "../components/AnimatedNumber";
 import { useExperimentPolling } from "../hooks/useExperimentPolling";
 
 export function ExperimentResult() {
@@ -60,7 +61,7 @@ export function ExperimentResult() {
             <InfoTooltip text="The median of each query's percentage change. Median (not average) so one especially large swing in a single query doesn't dominate the headline number." />
           </div>
           <div className={`change-value ${changeClassName(experiment.overallPercentageChange)}`} style={{ fontSize: 32 }}>
-            {formatChangeText(experiment.overallPercentageChange)}
+            <AnimatedNumber value={experiment.overallPercentageChange} format={formatChangeText} />
           </div>
         </div>
       )}
@@ -93,48 +94,64 @@ export function ExperimentResult() {
               </tr>
             </thead>
             <tbody>
-              {experiment.queryResults.map((r) => (
-                <Fragment key={r.queryId}>
-                  <tr>
-                    <td>
-                      {r.queryName}
-                      <div>
-                        <button className="see-why-toggle" onClick={() => toggle(r.queryId)}>
-                          {expanded.has(r.queryId) ? "Hide plan" : "See why"}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="mono">{formatMs(r.baselineMedianMs)}</td>
-                    <td className="mono">{formatMs(r.candidateMedianMs)}</td>
-                    <td>
-                      <span className={`change-value ${changeClassName(r.percentageChange)}`}>
-                        {formatChangeText(r.percentageChange)}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          r.status === "IMPROVED" ? "badge-improved" : r.status === "REGRESSED" ? "badge-regressed" : "badge-unchanged"
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </td>
-                  </tr>
-                  {expanded.has(r.queryId) && (
+              {experiment.queryResults.map((r) => {
+                const isOpen = expanded.has(r.queryId);
+                return (
+                  <Fragment key={r.queryId}>
                     <tr>
-                      <td colSpan={5} style={{ background: "var(--bg)" }}>
-                        <div className="query-sql" style={{ marginBottom: 4 }}>{r.planDiffSummary}</div>
-                        <div style={{ color: "var(--text-tertiary)", fontSize: 11.5, marginBottom: 12 }}>
-                          Each box below is one step ("node") in Postgres's real execution plan for this query.
-                          Boxes outlined in blue changed between before and after.
+                      <td>
+                        {r.queryName}
+                        <div>
+                          <button
+                            className="see-why-toggle"
+                            onClick={() => toggle(r.queryId)}
+                            aria-expanded={isOpen}
+                          >
+                            {isOpen ? "Hide plan" : "See why"}
+                          </button>
                         </div>
-                        <PlanTreeCompare baselinePlanJson={r.baselinePlanJson} candidatePlanJson={r.candidatePlanJson} />
+                      </td>
+                      <td className="mono">{formatMs(r.baselineMedianMs)}</td>
+                      <td className="mono">{formatMs(r.candidateMedianMs)}</td>
+                      <td>
+                        <span className={`change-value ${changeClassName(r.percentageChange)}`}>
+                          {formatChangeText(r.percentageChange)}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${
+                            r.status === "IMPROVED" ? "badge-improved" : r.status === "REGRESSED" ? "badge-regressed" : "badge-unchanged"
+                          }`}
+                        >
+                          {r.status}
+                        </span>
                       </td>
                     </tr>
-                  )}
-                </Fragment>
-              ))}
+                    {/* Always mounted (rather than only rendered when open) so the
+                        expand/collapse can animate its height smoothly via the
+                        accordion grid-rows trick -- a table row can't otherwise
+                        transition from height 0, since row height isn't a real
+                        animatable CSS property. */}
+                    <tr className="no-entrance">
+                      <td colSpan={5} style={{ padding: 0, border: "none" }}>
+                        <div className={`accordion${isOpen ? " open" : ""}`}>
+                          <div className="accordion-inner">
+                            <div style={{ background: "var(--bg)", padding: "12px" }}>
+                              <div className="query-sql" style={{ marginBottom: 4 }}>{r.planDiffSummary}</div>
+                              <div style={{ color: "var(--text-tertiary)", fontSize: 11.5, marginBottom: 12 }}>
+                                Each box below is one step ("node") in Postgres's real execution plan for this query.
+                                Boxes outlined in blue changed between before and after.
+                              </div>
+                              <PlanTreeCompare baselinePlanJson={r.baselinePlanJson} candidatePlanJson={r.candidatePlanJson} />
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

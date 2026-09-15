@@ -17,6 +17,23 @@
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Menlo, Consolas, monospace;
+
+  --accent-glow: rgba(91, 141, 239, 0.35);
+  --positive-glow: rgba(92, 185, 138, 0.3);
+  --negative-glow: rgba(217, 112, 95, 0.3);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 140ms;
+  --dur-base: 260ms;
+  --dur-slow: 500ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 * {
@@ -86,17 +103,63 @@ button {
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 13.5px;
+  position: relative;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), padding-left var(--dur-fast) var(--ease-out);
 }
 
 .nav-link:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+  padding-left: 14px;
 }
 
 .nav-link.active {
   background: var(--bg-hover);
   color: var(--text-primary);
   font-weight: 500;
+}
+
+.nav-link.active::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: fadeIn var(--dur-base) var(--ease-out);
+}
+
+.nav-footer {
+  margin-top: auto;
+  padding: 10px 8px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+.health-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-tertiary);
+  transition: background var(--dur-base) var(--ease-out);
+}
+
+.health-dot.online {
+  background: var(--positive);
+  box-shadow: 0 0 0 3px var(--positive-glow);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+.health-dot.offline {
+  background: var(--negative);
+  box-shadow: 0 0 0 3px var(--negative-glow);
 }
 
 .main {
@@ -145,12 +208,17 @@ h2 {
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .btn:hover {
   background: var(--bg-hover);
   border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
 }
 
 .btn:disabled {
@@ -168,6 +236,7 @@ h2 {
 .btn-primary:hover {
   background: #6f9bf2;
   border-color: #6f9bf2;
+  box-shadow: 0 4px 18px var(--accent-glow);
 }
 
 /* ---------- table ---------- */
@@ -200,10 +269,40 @@ tr:last-child td {
 
 tr.clickable {
   cursor: pointer;
+  transition: background var(--dur-fast) ease;
 }
 
 tr.clickable:hover td {
   background: var(--bg-hover);
+}
+
+tr.clickable:hover td:first-child {
+  color: var(--accent);
+}
+
+/* Rows fade/slide in on first paint so a freshly-loaded table doesn't just
+   pop into existence -- staggered per row via nth-child, capped at 14 rows
+   since anything beyond that would make the list feel slow to settle. */
+tbody tr {
+  animation: rowIn var(--dur-base) var(--ease-out) both;
+}
+
+tbody tr:nth-child(1) { animation-delay: 0ms; }
+tbody tr:nth-child(2) { animation-delay: 25ms; }
+tbody tr:nth-child(3) { animation-delay: 50ms; }
+tbody tr:nth-child(4) { animation-delay: 75ms; }
+tbody tr:nth-child(5) { animation-delay: 100ms; }
+tbody tr:nth-child(6) { animation-delay: 125ms; }
+tbody tr:nth-child(7) { animation-delay: 150ms; }
+tbody tr:nth-child(8) { animation-delay: 175ms; }
+tbody tr:nth-child(9) { animation-delay: 200ms; }
+tbody tr:nth-child(10) { animation-delay: 225ms; }
+tbody tr:nth-child(n + 11) { animation-delay: 250ms; }
+
+/* A row revealed by user interaction (e.g. "See why" plan detail) rather
+   than initial load shouldn't replay the entrance animation. */
+tbody tr.no-entrance {
+  animation: none;
 }
 
 /* ---------- cards ---------- */
@@ -213,6 +312,13 @@ tr.clickable:hover td {
   border-radius: 8px;
   padding: 20px;
   background: var(--bg-elevated);
+  transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+
+.card-hoverable:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  transform: translateY(-2px);
 }
 
 /* ---------- badges ---------- */
@@ -229,12 +335,14 @@ tr.clickable:hover td {
 }
 
 .badge-improved { color: var(--positive); background: var(--positive-bg); }
-.badge-regressed { color: var(--negative); background: var(--negative-bg); }
+.badge-regressed { color: var(--negative); background: var(--negative-bg); animation: pulse-badge 1.8s ease-in-out infinite; }
 .badge-unchanged { color: var(--neutral); background: var(--bg-hover); }
 
 .change-value {
   font-family: var(--font-mono);
   font-weight: 600;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
 }
 
 .change-positive { color: var(--negative); }
@@ -299,6 +407,35 @@ tr.clickable:hover td {
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
+  position: relative;
+}
+
+.sql-block {
+  position: relative;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  border-radius: 5px;
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
+}
+
+.copy-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.copy-btn.copied {
+  color: var(--positive);
+  border-color: var(--positive);
 }
 
 .plan-columns {
@@ -429,11 +566,10 @@ tr.clickable:hover td {
 }
 
 .info-tooltip .tooltip-bubble {
-  display: none;
   position: absolute;
   bottom: 20px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(4px);
   width: 240px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
@@ -445,10 +581,16 @@ tr.clickable:hover td {
   line-height: 1.5;
   z-index: 10;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), visibility var(--dur-fast);
 }
 
 .info-tooltip:hover .tooltip-bubble {
-  display: block;
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }
 
 .pipeline {
@@ -479,6 +621,140 @@ tr.clickable:hover td {
 
 .table-scroll {
   overflow-x: auto;
+}
+
+/* ---------- motion primitives ---------- */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 3px var(--positive-glow); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+
+@keyframes pulse-badge {
+  0%, 100% { box-shadow: 0 0 0 0 var(--negative-glow); }
+  50% { box-shadow: 0 0 0 4px transparent; }
+}
+
+@keyframes draw-line {
+  to { stroke-dashoffset: 0; }
+}
+
+.page-enter {
+  animation: fadeInUp var(--dur-slow) var(--ease-out) both;
+}
+
+/* ---------- stat cards (Overview dashboard row) ---------- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 20px 0 8px 0;
+}
+
+.stat-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+  transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+
+.stat-grid .stat-card:nth-child(1) { animation-delay: 0ms; }
+.stat-grid .stat-card:nth-child(2) { animation-delay: 60ms; }
+.stat-grid .stat-card:nth-child(3) { animation-delay: 120ms; }
+.stat-grid .stat-card:nth-child(4) { animation-delay: 180ms; }
+
+.stat-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+
+.stat-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.stat-card-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.stat-card-positive .stat-card-value { color: var(--positive); }
+.stat-card-negative .stat-card-value { color: var(--negative); }
+
+.stat-card-hint {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+/* ---------- sparkline ---------- */
+
+.sparkline-path {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw-line 900ms var(--ease-out) 150ms forwards;
+}
+
+.sparkline-wrap {
+  margin-top: 20px;
+}
+
+.sparkline-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* ---------- smooth accordion (plan diff expand/collapse) ---------- */
+
+.accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-slow) var(--ease-out);
+}
+
+.accordion.open {
+  grid-template-rows: 1fr;
+}
+
+.accordion-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ---------- banner entrance ---------- */
+
+.error-banner,
+.regression-banner {
+  animation: fadeInUp var(--dur-base) var(--ease-out) both;
 }
 
 /* ---------- mobile ---------- */
@@ -512,6 +788,21 @@ tr.clickable:hover td {
 
   .nav-link {
     white-space: nowrap;
+  }
+
+  .nav-link:hover {
+    padding-left: 10px;
+  }
+
+  .nav-footer {
+    margin-top: 0;
+    margin-left: auto;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .nav-link.active::before {
+    display: none;
   }
 
   .main {

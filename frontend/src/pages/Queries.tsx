@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { WorkloadQuery } from "../api/types";
+import { CopyButton } from "../components/CopyButton";
 
 export function Queries() {
   const [queries, setQueries] = useState<WorkloadQuery[] | null>(null);
@@ -22,11 +23,16 @@ export function Queries() {
       {!error && queries === null && <div className="loading-line">Loading...</div>}
       {queries &&
         queries.map((q) => (
-          <div className="card" key={q.id} style={{ marginBottom: 16 }}>
+          <div className="card card-hoverable" key={q.id} style={{ marginBottom: 16 }}>
             <div className="category-tag">{q.category.replace(/_/g, " ")}</div>
             <h2 style={{ marginTop: 4 }}>{q.name}</h2>
             <p style={{ color: "var(--text-secondary)", marginTop: 0 }}>{q.description}</p>
-            <div className="query-sql">{q.sql}</div>
+            <div className="sql-block">
+              <div className="query-sql" style={{ background: "var(--bg)", padding: 12, borderRadius: 6, border: "1px solid var(--border-strong)" }}>
+                {q.sql}
+              </div>
+              <CopyButton text={q.sql} />
+            </div>
           </div>
         ))}
     </div>

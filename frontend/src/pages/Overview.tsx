@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Experiment } from "../api/types";
 import { changeClassName, formatChangeText, formatDate } from "../format";
 import { ExplainerPanel } from "../components/ExplainerPanel";
 import { Skeleton } from "../components/Skeleton";
+import { StatCard } from "../components/StatCard";
+import { AnimatedNumber } from "../components/AnimatedNumber";
+import { TrendSparkline } from "../components/TrendSparkline";
 
 export function Overview() {
   const [experiments, setExperiments] = useState<Experiment[] | null>(null);
@@ -18,6 +21,28 @@ export function Overview() {
       .catch((e) => setError(e.message));
   }, []);
 
+  const completed = useMemo(
+    () => (experiments ?? []).filter((e) => e.status === "COMPLETED" && e.overallPercentageChange !== null),
+    [experiments]
+  );
+
+  const stats = useMemo(() => {
+    if (completed.length === 0) return null;
+    const changes = completed.map((e) => e.overallPercentageChange as number);
+    const best = Math.min(...changes);
+    const regressedCount = completed.reduce(
+      (n, e) => n + e.queryResults.filter((r) => r.status === "REGRESSED").length,
+      0
+    );
+    const avg = changes.reduce((a, b) => a + b, 0) / changes.length;
+    // Oldest-to-newest for the sparkline, most recent 12 runs.
+    const trend = [...completed]
+      .sort((a, b) => a.experimentId - b.experimentId)
+      .slice(-12)
+      .map((e) => e.overallPercentageChange as number);
+    return { best, regressedCount, avg, trend };
+  }, [completed]);
+
   return (
     <div>
       <h1>Database performance,</h1>
@@ -29,6 +54,38 @@ export function Overview() {
       <button className="btn btn-primary" onClick={() => navigate("/experiments")}>
         Start Experiment
       </button>
+
+      {stats && (
+        <div className="stat-grid">
+          <StatCard
+            label="Experiments run"
+            value={<AnimatedNumber value={completed.length} format={(n) => Math.round(n).toString()} />}
+          />
+          <StatCard
+            label="Best result"
+            tone="positive"
+            value={<AnimatedNumber value={stats.best} format={(n) => formatChangeText(n)} />}
+          />
+          <StatCard
+            label="Avg. overall change"
+            tone={stats.avg <= 0 ? "positive" : "negative"}
+            value={<AnimatedNumber value={stats.avg} format={(n) => formatChangeText(n)} />}
+          />
+          <StatCard
+            label="Regressions flagged"
+            tone={stats.regressedCount > 0 ? "negative" : "neutral"}
+            value={<AnimatedNumber value={stats.regressedCount} format={(n) => Math.round(n).toString()} />}
+            hint="across all queries, all runs"
+          />
+        </div>
+      )}
+
+      {stats && stats.trend.length >= 2 && (
+        <div className="sparkline-wrap">
+          <div className="sparkline-label">Overall change, last {stats.trend.length} runs</div>
+          <TrendSparkline values={stats.trend} />
+        </div>
+      )}
 
       <ExplainerPanel />
 
