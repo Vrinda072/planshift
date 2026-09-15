@@ -180,8 +180,14 @@ Requires Docker and Docker Compose.
 ```bash
 git clone https://github.com/Vrinda072/planshift.git
 cd planshift
+cp .env.example .env
 docker compose up -d --build
 ```
+
+`.env` holds the Postgres credentials (`docker-compose.yml` reads it via
+`env_file:`) and isn't committed. The defaults in `.env.example` work fine
+for local use as-is; change them if you're running this anywhere other
+people can reach it.
 
 Postgres on 5432, the API on 8080, the frontend on 5173.
 
