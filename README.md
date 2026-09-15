@@ -189,9 +189,12 @@ docker compose up -d --build
 for local use as-is; change them if you're running this anywhere other
 people can reach it.
 
-Postgres on 5432, the API on 8080, the frontend on 5173. If something on
-your machine already uses 5432, set `POSTGRES_HOST_PORT` in `.env` instead
-of fighting the conflict.
+Postgres on 5432, the API on 8080, the frontend on 5173 by default. Any of
+these can collide with something already running on your machine --
+`POSTGRES_HOST_PORT`, `BACKEND_HOST_PORT`, and `FRONTEND_HOST_PORT` in
+`.env` remap them. If you change `BACKEND_HOST_PORT`, rebuild
+(`docker compose up -d --build`, not just `up -d`) -- the frontend has the
+API URL baked in at build time, not read at runtime.
 
 The database starts empty:
 
