@@ -13,8 +13,6 @@ export function useExperimentPolling(experimentId: number | null, intervalMs = 6
 
   useEffect(() => {
     if (experimentId === null) {
-      setExperiment(null);
-      setError(null);
       return;
     }
     let cancelled = false;
@@ -25,6 +23,7 @@ export function useExperimentPolling(experimentId: number | null, intervalMs = 6
         const result = await api.getExperiment(experimentId);
         if (cancelled) return;
         setExperiment(result);
+        setError(null);
         if (result.status === "RUNNING") {
           timer = setTimeout(poll, intervalMs);
         }
@@ -40,5 +39,10 @@ export function useExperimentPolling(experimentId: number | null, intervalMs = 6
     };
   }, [experimentId, intervalMs]);
 
+  // Derived during render rather than reset via an effect -- avoids a
+  // synchronous setState inside the effect body for the "no id" case.
+  if (experimentId === null) {
+    return { experiment: null, error: null };
+  }
   return { experiment, error };
 }
