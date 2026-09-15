@@ -13,7 +13,7 @@ export function Queries() {
 
   return (
     <div>
-      <h1>Queries</h1>
+      <h1 className="accent-italic">Queries</h1>
       <p className="subtitle">
         The fixed, read-only workload PLANSHIFT benchmarks against the synthetic dataset. No arbitrary SQL is
         accepted here -- but you can build your own query against your own data on the{" "}
