@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import type { PredictedImpact } from "../api/client";
 import type { QuerySpec, TableInfo } from "../api/types";
 import { ImportDataPanel } from "../components/ImportDataPanel";
 import { CopyButton } from "../components/CopyButton";
+import { changeClassName, formatChangeText } from "../format";
 
 const OPERATORS = ["=", "!=", ">", "<", ">=", "<=", "LIKE"];
 const AGGREGATES = ["", "COUNT", "SUM", "AVG", "MIN", "MAX"];
@@ -31,6 +33,9 @@ export function QueryBuilder() {
   const [previewSql, setPreviewSql] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [predictedImpact, setPredictedImpact] = useState<PredictedImpact | null>(null);
+  const [predicting, setPredicting] = useState(false);
+  const [predictError, setPredictError] = useState<string | null>(null);
 
   const refreshTables = () => api.listTables().then(setTables).catch((e) => setError(e.message));
 
@@ -69,6 +74,25 @@ export function QueryBuilder() {
       setPreviewSql(result.sql);
     } catch (e) {
       setPreviewError((e as Error).message);
+    }
+  };
+
+  const predictImpact = async () => {
+    const effectiveIndexColumn = indexColumn || filterColumn;
+    if (!effectiveIndexColumn) {
+      setPredictError("Pick a column to index (or set a filter column, which is used by default).");
+      return;
+    }
+    setPredicting(true);
+    setPredictError(null);
+    setPredictedImpact(null);
+    try {
+      const result = await api.predictImpact(buildSpec(), effectiveIndexColumn);
+      setPredictedImpact(result);
+    } catch (e) {
+      setPredictError((e as Error).message);
+    } finally {
+      setPredicting(false);
     }
   };
 
@@ -294,10 +318,38 @@ export function QueryBuilder() {
               <label>Threshold (%)</label>
               <input type="number" min={1} max={100} value={thresholdPercent} onChange={(e) => setThresholdPercent(Number(e.target.value))} />
             </div>
+            <button className="btn" onClick={predictImpact} disabled={predicting}>
+              {predicting ? "Predicting..." : "Predict Impact"}
+            </button>
             <button className="btn btn-primary" onClick={runExperiment} disabled={running}>
               {running ? "Starting..." : "Run Experiment"}
             </button>
           </div>
+
+          {predictError && <div className="error-banner" style={{ marginTop: 12 }}>{predictError}</div>}
+
+          {predictedImpact && (
+            <div className="card" style={{ marginTop: 16, background: "var(--bg)" }}>
+              <div className="category-tag">
+                Predicted impact
+                <span style={{ marginLeft: 6, fontSize: 10, textTransform: "none", letterSpacing: 0 }}>
+                  ({predictedImpact.method === "historical" ? "from past experiments" : "rule-of-thumb estimate"})
+                </span>
+              </div>
+              <div
+                className={`change-value ${changeClassName(predictedImpact.predictedPercentageChange)}`}
+                style={{ fontSize: 24, marginTop: 6 }}
+              >
+                {formatChangeText(predictedImpact.predictedPercentageChange)}
+              </div>
+              <p style={{ color: "var(--text-tertiary)", fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+                {predictedImpact.note} Current plan: <span className="mono">{predictedImpact.currentScanType}</span>,
+                estimated selectivity <span className="mono">{(predictedImpact.selectivity * 100).toFixed(1)}%</span>.
+                This is an estimate to save time before committing to the real before/after run below -- not a
+                substitute for it.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
