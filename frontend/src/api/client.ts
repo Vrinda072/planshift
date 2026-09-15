@@ -25,6 +25,15 @@ export interface ImportResult {
   rowCount: number;
 }
 
+export interface PredictedImpact {
+  predictedPercentageChange: number;
+  method: "historical" | "heuristic";
+  sampleSize: number;
+  selectivity: number;
+  currentScanType: string;
+  note: string;
+}
+
 export const api = {
   health: () => request<HealthStatus>("/api/health"),
   listQueries: () => request<WorkloadQuery[]>("/api/queries"),
@@ -48,6 +57,11 @@ export const api = {
     request<Experiment>("/api/query-builder/run", {
       method: "POST",
       body: JSON.stringify({ spec, indexColumn, repetitions, thresholdFraction }),
+    }),
+  predictImpact: (spec: QuerySpec, indexColumn: string) =>
+    request<PredictedImpact>("/api/query-builder/predict-impact", {
+      method: "POST",
+      body: JSON.stringify({ spec, indexColumn }),
     }),
   importCsv: async (file: File, tableName: string): Promise<ImportResult> => {
     const formData = new FormData();

@@ -89,6 +89,20 @@ public class ExperimentRepository {
                 experimentId);
     }
 
+    /** Completed results with a stored baseline plan -- the pool ImpactPredictionService searches for similar past cases. */
+    public List<HistoricalResultPoint> findCompletedResultsWithPlans() {
+        return jdbc.query(
+                "SELECT e.target_table AS target_table, eqr.percentage_change AS percentage_change, "
+                        + "eqr.baseline_plan_json AS baseline_plan_json "
+                        + "FROM experiment_query_results eqr "
+                        + "JOIN experiments e ON eqr.experiment_id = e.experiment_id "
+                        + "WHERE e.status = 'COMPLETED' AND eqr.baseline_plan_json IS NOT NULL AND e.target_table IS NOT NULL",
+                (rs, rowNum) -> new HistoricalResultPoint(
+                        rs.getString("target_table"),
+                        rs.getDouble("percentage_change"),
+                        rs.getString("baseline_plan_json")));
+    }
+
     public List<ExperimentQueryResult> findAllRegressions() {
         return jdbc.query(
                 "SELECT eqr.* FROM experiment_query_results eqr "
