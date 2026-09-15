@@ -29,7 +29,7 @@ export function ExperimentResult() {
     return (
       <div>
         <div className="category-tag">Experiment #{experiment.experimentId}</div>
-        <h1>Running experiment</h1>
+        <h1 className="accent-italic">Running experiment</h1>
         <ExperimentProgress currentPhase={experiment.currentPhase} />
       </div>
     );
@@ -39,7 +39,7 @@ export function ExperimentResult() {
     return (
       <div>
         <div className="category-tag">Experiment #{experiment.experimentId}</div>
-        <h1>Experiment failed</h1>
+        <h1 className="accent-italic">Experiment failed</h1>
         <div className="error-banner">
           Something went wrong while running this experiment. Check the backend logs for details.
         </div>
@@ -52,7 +52,7 @@ export function ExperimentResult() {
   return (
     <div>
       <div className="category-tag">Experiment #{experiment.experimentId}</div>
-      <h1>Experiment complete</h1>
+      <h1 className="accent-italic">Experiment complete</h1>
 
       {experiment.overallPercentageChange !== null && (
         <div className="card" style={{ marginBottom: 24, marginTop: 16 }}>

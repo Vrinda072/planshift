@@ -98,7 +98,7 @@ export function QueryBuilder() {
 
   return (
     <div>
-      <h1>Query Builder</h1>
+      <h1 className="accent-italic">Query Builder</h1>
       <p className="subtitle">
         Build a query against any table in the connected database -- your own imported dataset included -- by
         picking columns and filters, not typing SQL. Every table and column name is checked against the

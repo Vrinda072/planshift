@@ -36,7 +36,7 @@ export function Experiments() {
 
   return (
     <div>
-      <h1>Experiments</h1>
+      <h1 className="accent-italic">Experiments</h1>
       <p className="subtitle">
         The built-in experiment: index added vs. index absent on <code>orders.customer_id</code>, run against
         the full 10-query workload. For a query and index target of your own choosing, use the{" "}

@@ -16,7 +16,7 @@ export function Regressions() {
 
   return (
     <div>
-      <h1>Regressions</h1>
+      <h1 className="accent-italic">Regressions</h1>
       <p className="subtitle">Every query result classified as a regression, across all experiments.</p>
       {error && <div className="error-banner">{error}</div>}
       {!error && regressions === null && <Skeleton rows={4} columns={5} />}
