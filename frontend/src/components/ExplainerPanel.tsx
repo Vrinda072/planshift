@@ -12,8 +12,14 @@ export function ExplainerPanel() {
     <div className="pipeline">
       {STEPS.map((step, i) => (
         <span key={step}>
-          <span className="pipeline-step">{step}</span>
-          {i < STEPS.length - 1 && <span className="pipeline-arrow">&rarr;</span>}
+          <span className="pipeline-step pipeline-step-in" style={{ animationDelay: `${i * 90}ms` }}>
+            {step}
+          </span>
+          {i < STEPS.length - 1 && (
+            <span className="pipeline-arrow pipeline-step-in" style={{ animationDelay: `${i * 90 + 45}ms` }}>
+              &rarr;
+            </span>
+          )}
         </span>
       ))}
     </div>
