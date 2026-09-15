@@ -94,7 +94,19 @@ export function Experiments() {
             </thead>
             <tbody>
               {experiments.map((exp) => (
-                <tr key={exp.experimentId} className="clickable" onClick={() => navigate(`/experiments/${exp.experimentId}`)}>
+                <tr
+                  key={exp.experimentId}
+                  className="clickable"
+                  onClick={() => navigate(`/experiments/${exp.experimentId}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(`/experiments/${exp.experimentId}`);
+                    }
+                  }}
+                >
                   <td>#{exp.experimentId} &middot; {exp.experimentType === "CUSTOM_QUERY" ? "custom" : "built-in"}</td>
                   <td className="mono">
                     {exp.targetTable ?? "orders"}.{exp.targetColumn ?? "customer_id"}

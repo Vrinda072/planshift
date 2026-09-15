@@ -35,7 +35,19 @@ export function Regressions() {
           </thead>
           <tbody>
             {regressions.map((r) => (
-              <tr key={r.id} className="clickable" onClick={() => navigate(`/experiments/${r.experimentId}`)}>
+              <tr
+                key={r.id}
+                className="clickable"
+                onClick={() => navigate(`/experiments/${r.experimentId}`)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/experiments/${r.experimentId}`);
+                  }
+                }}
+              >
                 <td>{r.queryName}</td>
                 <td>#{r.experimentId}</td>
                 <td className="mono">{formatMs(r.baselineMedianMs)}</td>
