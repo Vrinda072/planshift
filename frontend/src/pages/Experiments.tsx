@@ -80,54 +80,56 @@ export function Experiments() {
         <h2>All experiments</h2>
         {experiments && experiments.length === 0 && <div className="empty-state">No experiments yet.</div>}
         {experiments && experiments.length > 0 && (
-          <table>
-            <thead>
-              <tr>
-                <th>Experiment</th>
-                <th>Target</th>
-                <th>Reps</th>
-                <th>Threshold</th>
-                <th>Ran</th>
-                <th>Status</th>
-                <th>Result</th>
-              </tr>
-            </thead>
-            <tbody>
-              {experiments.map((exp) => (
-                <tr
-                  key={exp.experimentId}
-                  className="clickable"
-                  onClick={() => navigate(`/experiments/${exp.experimentId}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      navigate(`/experiments/${exp.experimentId}`);
-                    }
-                  }}
-                >
-                  <td>#{exp.experimentId} &middot; {exp.experimentType === "CUSTOM_QUERY" ? "custom" : "built-in"}</td>
-                  <td className="mono">
-                    {exp.targetTable ?? "orders"}.{exp.targetColumn ?? "customer_id"}
-                  </td>
-                  <td className="mono">{exp.repetitions}</td>
-                  <td className="mono">{(exp.thresholdFraction * 100).toFixed(0)}%</td>
-                  <td>{formatDate(exp.createdAt)}</td>
-                  <td>{exp.status}</td>
-                  <td>
-                    {exp.status === "COMPLETED" && exp.overallPercentageChange !== null ? (
-                      <span className={`change-value ${changeClassName(exp.overallPercentageChange)}`}>
-                        {formatChangeText(exp.overallPercentageChange)}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Experiment</th>
+                  <th>Target</th>
+                  <th>Reps</th>
+                  <th>Threshold</th>
+                  <th>Ran</th>
+                  <th>Status</th>
+                  <th>Result</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {experiments.map((exp) => (
+                  <tr
+                    key={exp.experimentId}
+                    className="clickable"
+                    onClick={() => navigate(`/experiments/${exp.experimentId}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate(`/experiments/${exp.experimentId}`);
+                      }
+                    }}
+                  >
+                    <td>#{exp.experimentId} &middot; {exp.experimentType === "CUSTOM_QUERY" ? "custom" : "built-in"}</td>
+                    <td className="mono">
+                      {exp.targetTable ?? "orders"}.{exp.targetColumn ?? "customer_id"}
+                    </td>
+                    <td className="mono">{exp.repetitions}</td>
+                    <td className="mono">{(exp.thresholdFraction * 100).toFixed(0)}%</td>
+                    <td>{formatDate(exp.createdAt)}</td>
+                    <td>{exp.status}</td>
+                    <td>
+                      {exp.status === "COMPLETED" && exp.overallPercentageChange !== null ? (
+                        <span className={`change-value ${changeClassName(exp.overallPercentageChange)}`}>
+                          {formatChangeText(exp.overallPercentageChange)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
