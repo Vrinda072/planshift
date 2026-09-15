@@ -15,3 +15,16 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+
+planshift:
+  dataset:
+    # Defaults used by --generate-data when --scale isn't "full" (and not
+    # overridden by --customers/--products/--orders/--max-items/--seed).
+    # --scale=full always uses the fixed 100k/500k preset regardless of
+    # these -- they're for the fast dev-scale default and any other custom
+    # scale you want without touching code.
+    seed: ${DATASET_SEED:42}
+    customers: ${DATASET_CUSTOMERS:1000}
+    products: ${DATASET_PRODUCTS:200}
+    orders: ${DATASET_ORDERS:5000}
+    max-items-per-order: ${DATASET_MAX_ITEMS_PER_ORDER:5}

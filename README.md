@@ -203,8 +203,16 @@ cd backend
 mvn spring-boot:run -Dspring-boot.run.arguments="--generate-data --scale=full"
 ```
 
-(`--scale=small` for a fast 1,000-customer dataset; `--scale=full` for the
-100k/500k one above.)
+`--scale=full` is the fixed 100k/500k preset used above; anything else
+(including omitting `--scale`) uses the `DATASET_CUSTOMERS`/`DATASET_PRODUCTS`/
+`DATASET_ORDERS`/`DATASET_MAX_ITEMS_PER_ORDER`/`DATASET_SEED` values in
+`.env`, 1,000 customers by default -- fast, for local iteration. Either
+way, `--customers`/`--products`/`--orders`/`--max-items`/`--seed` override
+individual fields for a one-off size without touching `.env` or `--scale=full`:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.arguments="--generate-data --scale=full --customers=200000"
+```
 
 Or skip the built-in dataset and use Query Builder to import your own CSV.
 
