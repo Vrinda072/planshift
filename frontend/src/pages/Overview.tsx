@@ -39,46 +39,48 @@ export function Overview() {
           <div className="empty-state">No experiments yet. Run your first one above.</div>
         )}
         {experiments && experiments.length > 0 && (
-          <table>
-            <thead>
-              <tr>
-                <th>Experiment</th>
-                <th>Dataset</th>
-                <th>Ran</th>
-                <th>Result</th>
-              </tr>
-            </thead>
-            <tbody>
-              {experiments.slice(0, 8).map((exp) => (
-                <tr
-                  key={exp.experimentId}
-                  className="clickable"
-                  onClick={() => navigate(`/experiments/${exp.experimentId}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      navigate(`/experiments/${exp.experimentId}`);
-                    }
-                  }}
-                >
-                  <td>#{exp.experimentId} &middot; {exp.experimentType.replace("_", " ").toLowerCase()}</td>
-                  <td className="mono">{exp.datasetCustomers.toLocaleString()} customers</td>
-                  <td>{formatDate(exp.createdAt)}</td>
-                  <td>
-                    {exp.status === "COMPLETED" && exp.overallPercentageChange !== null ? (
-                      <span className={`change-value ${changeClassName(exp.overallPercentageChange)}`}>
-                        {formatChangeText(exp.overallPercentageChange)}
-                      </span>
-                    ) : (
-                      <span className="loading-line">{exp.status.toLowerCase()}</span>
-                    )}
-                  </td>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Experiment</th>
+                  <th>Dataset</th>
+                  <th>Ran</th>
+                  <th>Result</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {experiments.slice(0, 8).map((exp) => (
+                  <tr
+                    key={exp.experimentId}
+                    className="clickable"
+                    onClick={() => navigate(`/experiments/${exp.experimentId}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate(`/experiments/${exp.experimentId}`);
+                      }
+                    }}
+                  >
+                    <td>#{exp.experimentId} &middot; {exp.experimentType.replace("_", " ").toLowerCase()}</td>
+                    <td className="mono">{exp.datasetCustomers.toLocaleString()} customers</td>
+                    <td>{formatDate(exp.createdAt)}</td>
+                    <td>
+                      {exp.status === "COMPLETED" && exp.overallPercentageChange !== null ? (
+                        <span className={`change-value ${changeClassName(exp.overallPercentageChange)}`}>
+                          {formatChangeText(exp.overallPercentageChange)}
+                        </span>
+                      ) : (
+                        <span className="loading-line">{exp.status.toLowerCase()}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

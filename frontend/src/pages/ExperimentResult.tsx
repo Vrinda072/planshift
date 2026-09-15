@@ -77,61 +77,63 @@ export function ExperimentResult() {
           Median of {experiment.repetitions} runs per configuration &middot; regression threshold{" "}
           {(experiment.thresholdFraction * 100).toFixed(0)}%
         </p>
-        <table>
-          <thead>
-            <tr>
-              <th>Query</th>
-              <th>Before</th>
-              <th>After</th>
-              <th>Change</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {experiment.queryResults.map((r) => (
-              <Fragment key={r.queryId}>
-                <tr>
-                  <td>
-                    {r.queryName}
-                    <div>
-                      <button className="see-why-toggle" onClick={() => toggle(r.queryId)}>
-                        {expanded.has(r.queryId) ? "Hide plan" : "See why"}
-                      </button>
-                    </div>
-                  </td>
-                  <td className="mono">{formatMs(r.baselineMedianMs)}</td>
-                  <td className="mono">{formatMs(r.candidateMedianMs)}</td>
-                  <td>
-                    <span className={`change-value ${changeClassName(r.percentageChange)}`}>
-                      {formatChangeText(r.percentageChange)}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`badge ${
-                        r.status === "IMPROVED" ? "badge-improved" : r.status === "REGRESSED" ? "badge-regressed" : "badge-unchanged"
-                      }`}
-                    >
-                      {r.status}
-                    </span>
-                  </td>
-                </tr>
-                {expanded.has(r.queryId) && (
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Query</th>
+                <th>Before</th>
+                <th>After</th>
+                <th>Change</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {experiment.queryResults.map((r) => (
+                <Fragment key={r.queryId}>
                   <tr>
-                    <td colSpan={5} style={{ background: "var(--bg)" }}>
-                      <div className="query-sql" style={{ marginBottom: 4 }}>{r.planDiffSummary}</div>
-                      <div style={{ color: "var(--text-tertiary)", fontSize: 11.5, marginBottom: 12 }}>
-                        Each box below is one step ("node") in Postgres's real execution plan for this query.
-                        Boxes outlined in blue changed between before and after.
+                    <td>
+                      {r.queryName}
+                      <div>
+                        <button className="see-why-toggle" onClick={() => toggle(r.queryId)}>
+                          {expanded.has(r.queryId) ? "Hide plan" : "See why"}
+                        </button>
                       </div>
-                      <PlanTreeCompare baselinePlanJson={r.baselinePlanJson} candidatePlanJson={r.candidatePlanJson} />
+                    </td>
+                    <td className="mono">{formatMs(r.baselineMedianMs)}</td>
+                    <td className="mono">{formatMs(r.candidateMedianMs)}</td>
+                    <td>
+                      <span className={`change-value ${changeClassName(r.percentageChange)}`}>
+                        {formatChangeText(r.percentageChange)}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          r.status === "IMPROVED" ? "badge-improved" : r.status === "REGRESSED" ? "badge-regressed" : "badge-unchanged"
+                        }`}
+                      >
+                        {r.status}
+                      </span>
                     </td>
                   </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
+                  {expanded.has(r.queryId) && (
+                    <tr>
+                      <td colSpan={5} style={{ background: "var(--bg)" }}>
+                        <div className="query-sql" style={{ marginBottom: 4 }}>{r.planDiffSummary}</div>
+                        <div style={{ color: "var(--text-tertiary)", fontSize: 11.5, marginBottom: 12 }}>
+                          Each box below is one step ("node") in Postgres's real execution plan for this query.
+                          Boxes outlined in blue changed between before and after.
+                        </div>
+                        <PlanTreeCompare baselinePlanJson={r.baselinePlanJson} candidatePlanJson={r.candidatePlanJson} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
