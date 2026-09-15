@@ -50,7 +50,19 @@ export function Overview() {
             </thead>
             <tbody>
               {experiments.slice(0, 8).map((exp) => (
-                <tr key={exp.experimentId} className="clickable" onClick={() => navigate(`/experiments/${exp.experimentId}`)}>
+                <tr
+                  key={exp.experimentId}
+                  className="clickable"
+                  onClick={() => navigate(`/experiments/${exp.experimentId}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(`/experiments/${exp.experimentId}`);
+                    }
+                  }}
+                >
                   <td>#{exp.experimentId} &middot; {exp.experimentType.replace("_", " ").toLowerCase()}</td>
                   <td className="mono">{exp.datasetCustomers.toLocaleString()} customers</td>
                   <td>{formatDate(exp.createdAt)}</td>
