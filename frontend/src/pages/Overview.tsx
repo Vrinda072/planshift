@@ -46,7 +46,9 @@ export function Overview() {
   return (
     <div>
       <h1>Database performance,</h1>
-      <h1 style={{ marginTop: -4 }}>without the guesswork.</h1>
+      <h1 className="accent-italic" style={{ marginTop: -4, fontSize: 38 }}>
+        without the guesswork.
+      </h1>
       <p className="subtitle">
         PLANSHIFT runs the same SQL workload against two PostgreSQL configurations, measures real execution
         time, and shows you exactly what changed in the query plan.
