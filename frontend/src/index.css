@@ -19,8 +19,10 @@
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Menlo, Consolas, monospace;
   --font-accent: "Instrument Serif", Georgia, "Times New Roman", serif;
 
-  --glow-warm: rgba(217, 112, 95, 0.22);
-  --glow-cool: rgba(91, 141, 239, 0.2);
+  --glow-warm: rgba(255, 111, 61, 0.55);
+  --glow-warm-2: rgba(255, 199, 130, 0.4);
+  --glow-cool: rgba(45, 200, 200, 0.5);
+  --glow-cool-2: rgba(70, 130, 220, 0.35);
 
   --accent-glow: rgba(91, 141, 239, 0.35);
   --positive-glow: rgba(92, 185, 138, 0.3);
@@ -59,10 +61,11 @@ body {
   position: relative;
 }
 
-/* Soft warm/cool gradient blobs anchored to the bottom of the viewport,
-   fixed so they stay put behind scrolling content rather than repeating
-   per page. Kept low-opacity and blurred so text on top stays fully
-   legible -- decoration, not a background image to read anything off. */
+/* Warm/cool gradient blobs anchored to the bottom of the viewport, fixed
+   so they stay put behind scrolling content rather than repeating per
+   page. Blurred and sitting behind a near-opaque body background, so
+   text on top stays fully legible -- decoration, not a background image
+   to read anything off. */
 body::before {
   content: "";
   position: fixed;
@@ -70,9 +73,12 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(600px 420px at 10% 100%, var(--glow-warm), transparent 60%),
-    radial-gradient(600px 420px at 90% 100%, var(--glow-cool), transparent 60%);
-  filter: blur(60px);
+    radial-gradient(55% 45% at 8% 105%, var(--glow-warm), transparent 65%),
+    radial-gradient(45% 40% at 28% 115%, var(--glow-warm-2), transparent 70%),
+    radial-gradient(55% 45% at 92% 105%, var(--glow-cool), transparent 65%),
+    radial-gradient(45% 40% at 72% 115%, var(--glow-cool-2), transparent 70%);
+  filter: blur(70px);
+  opacity: 0.9;
 }
 
 code, .mono {
