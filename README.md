@@ -271,35 +271,6 @@ cd frontend && npm install && npm run dev   # :5173
 | `POST /api/query-builder/predict-impact` | Estimates the result without running the real experiment |
 | `POST /api/datasets/import` | Multipart CSV upload → new Postgres table via `COPY` |
 
-## Limitations
-
-- Only index add/remove is supported as a database change — any table or
-  column now, but still just indexing.
-- Predict Impact's historical lookup is only as good as the experiment
-  history it draws from. On a fresh database it has nothing to compare
-  against and always falls back to the heuristic.
-- Small tables are noisy — sub-millisecond timings are mostly measurement
-  jitter. The 100k/500k run above is signal; the `kaggle_movies` result is
-  a demonstration of the noise floor, not a counterexample.
-- CSV import reads the whole file into memory and scans every row for type
-  inference before `COPY`. Fine at Kaggle-CSV scale (capped at 50MB);
-  would stream for anything larger.
-- No repeated-experiment statistics — confidence intervals across separate
-  runs, not just within one — and no concurrency testing.
-
-## Where this could go
-
-Predict Impact is a nearest-neighbor lookup, not a trained model — the
-next step is an actual regression fit over accumulated experiment history
-once there's enough of it, and the original open question is still open:
-do execution-plan features predict regressions well enough to replace the
-selectivity heuristic entirely?
-
-Also worth doing: server-sent events instead of polling for experiment
-progress (the backend already knows the phase the moment it changes), and
-moving the Overview page's stats to a real `/api/experiments/summary`
-endpoint instead of computing them client-side from the full list.
-
 ## Stack
 
 Java 21, Spring Boot 3.5, Maven, PostgreSQL 16, JDBC, JUnit 5,
