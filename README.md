@@ -43,7 +43,7 @@ Backend package layout (`backend/src/main/java/com/planshift/`):
 | `controller` | REST API |
 
 No microservices, no message queue, no ORM — a JDBC-backed Spring Boot API
-and a static React frontend. The problem didn't need more than that.
+and a static React frontend.
 
 ## How it works
 
