@@ -9,6 +9,12 @@ times the difference, captures the execution plan for each run, and flags
 which queries actually regressed. It's meant to answer "did adding that
 index help?" with numbers instead of a guess.
 
+**Live:** [frontend](https://frontend-mauve-two-60.vercel.app) ·
+[backend health check](https://planshift-backend.onrender.com/api/health)
+(the backend is a REST API with no UI of its own — that link is just proof
+it's up). Free-tier hosting, so the backend can take ~30s to wake up on
+the first request after it's been idle.
+
 ## Why
 
 "Just add an index" gets thrown around a lot. This is the tool I wanted for
@@ -88,6 +94,16 @@ filter value) is always a bound parameter. Import a CSV first to point it
 at your own data; Postgres's own `COPY` parses and loads it, with a type
 inferred per column.
 
+**Predicting impact before running the real experiment.** A real
+experiment is slow on purpose — it actually drops and re-adds an index and
+times both sides. "Predict Impact" gives a cheaper answer first: a plain
+`EXPLAIN` (nothing executes) gets the planner's own row estimate for the
+query, turned into a selectivity ratio, which is compared against every
+past *completed* experiment with a similar selectivity — close matches get
+averaged into a prediction. Below three matches, it falls back to a
+selectivity-only heuristic and says so explicitly, rather than presenting
+a guess as a measurement.
+
 ## Example: the built-in workload
 
 100,000 customers, 500,000 orders, 1.5M order_items, Postgres 16, via
@@ -154,14 +170,16 @@ when that's a regression.
 
 ## Testing
 
-24 tests. Unit tests (`RegressionDetectorTest`, `PlanParserTest`,
-`PlanComparatorTest`, `HealthControllerTest`, `QueryBuilderServiceTest`)
-cover pure logic, including feeding `"orders; DROP TABLE orders; --"` in as
-a table name and checking it gets rejected. Integration tests
-(`DataGeneratorIT`, `IndexExperimentIT`, `CsvImportServiceIT`) run against
-a disposable Postgres container via Testcontainers: reproducibility,
-referential integrity, the full experiment pipeline end to end, and CSV
-import through real `COPY`, including a quoted field with a comma in it.
+32 backend tests, plus 16 frontend tests (Vitest + React Testing Library,
+covering the format helpers and a couple of components). Backend unit
+tests (`RegressionDetectorTest`, `PlanParserTest`, `PlanComparatorTest`,
+`HealthControllerTest`, `QueryBuilderServiceTest`) cover pure logic,
+including feeding `"orders; DROP TABLE orders; --"` in as a table name and
+checking it gets rejected. Integration tests (`DataGeneratorIT`,
+`IndexExperimentIT`, `CsvImportServiceIT`) run against a disposable
+Postgres container via Testcontainers: reproducibility, referential
+integrity, the full experiment pipeline end to end, and CSV import through
+real `COPY`, including a quoted field with a comma in it.
 
 One of them caught a real flake: `orderHistoryQueryImprovesWithIndex`
 asserted `candidate <= baseline`, which at small scale is sub-millisecond
@@ -173,6 +191,9 @@ Replaced with an assertion on the plan itself — the scan strategy changed
 cd backend
 mvn test      # unit tests
 mvn verify    # unit + integration tests, needs Docker running
+
+cd frontend
+npm test
 ```
 
 ## Running it
@@ -247,14 +268,16 @@ cd frontend && npm install && npm run dev   # :5173
 | `GET /api/schema/tables` | Table/column introspection for the query builder |
 | `POST /api/query-builder/preview` | Validates a query spec and returns the generated SQL |
 | `POST /api/query-builder/run` | Runs an experiment against a custom table/query (202, async) |
+| `POST /api/query-builder/predict-impact` | Estimates the result without running the real experiment |
 | `POST /api/datasets/import` | Multipart CSV upload → new Postgres table via `COPY` |
 
 ## Limitations
 
 - Only index add/remove is supported as a database change — any table or
   column now, but still just indexing.
-- No ML yet. That's the next phase, once there's more experiment data to
-  work with.
+- Predict Impact's historical lookup is only as good as the experiment
+  history it draws from. On a fresh database it has nothing to compare
+  against and always falls back to the heuristic.
 - Small tables are noisy — sub-millisecond timings are mostly measurement
   jitter. The 100k/500k run above is signal; the `kaggle_movies` result is
   a demonstration of the noise floor, not a counterexample.
@@ -266,11 +289,16 @@ cd frontend && npm install && npm run dev   # :5173
 
 ## Where this could go
 
-The original question — do execution-plan changes predict regressions well
-enough to be useful — is still open. What exists here is the instrument
-for answering it: every experiment stores the regression label and the
-full before/after plan tree, which is the (features, label) pair a
-classifier would need. Nothing has been trained on it yet.
+Predict Impact is a nearest-neighbor lookup, not a trained model — the
+next step is an actual regression fit over accumulated experiment history
+once there's enough of it, and the original open question is still open:
+do execution-plan features predict regressions well enough to replace the
+selectivity heuristic entirely?
+
+Also worth doing: server-sent events instead of polling for experiment
+progress (the backend already knows the phase the moment it changes), and
+moving the Overview page's stats to a real `/api/experiments/summary`
+endpoint instead of computing them client-side from the full list.
 
 ## Stack
 
