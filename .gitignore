@@ -30,5 +30,8 @@ venv/
 # --- Docker ---
 docker-compose.override.yml
 
+# --- Vercel ---
+.vercel
+
 # --- Logs ---
 *.log
