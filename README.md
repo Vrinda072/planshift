@@ -2,33 +2,106 @@
 
 [![CI](https://github.com/Vrinda072/planshift/actions/workflows/ci.yml/badge.svg)](https://github.com/Vrinda072/planshift/actions/workflows/ci.yml)
 
-Database performance, without the guesswork.
+Does adding that index actually help? PLANSHIFT answers with measurements
+instead of a guess.
 
-PLANSHIFT runs a fixed SQL workload against two PostgreSQL configurations,
-times the difference, captures the execution plan for each run, and flags
-which queries actually regressed. It's meant to answer "did adding that
-index help?" with numbers instead of a guess.
+![Demo: pick a table, filter on a column, choose an index, run the experiment and read the before/after result](docs/demo.gif)
+
+*Real data: 564,516 Uber pickups loaded from a CSV. Filtering on `lat`, the
+index takes the query from 10.0 ms to 0.28 ms, and the plan shows why.*
 
 **Live:** [frontend](https://frontend-mauve-two-60.vercel.app) ·
 [backend health check](https://planshift-backend.onrender.com/api/health)
-(the backend is a REST API with no UI of its own — that link is just proof
-it's up). Free-tier hosting, so the backend can take ~30s to wake up on
-the first request after it's been idle.
+(the backend is a REST API with no UI of its own, so that link is just
+proof it's up). It runs on free-tier hosting, so the first request after
+it's been idle can take about 30 seconds.
 
-## Why
+## What it solves
 
-"Just add an index" gets thrown around a lot. This is the tool I wanted for
-checking that claim: same data, same queries, before and after, with the
-query plan showing exactly what the planner did differently.
+"Just add an index" is the standard advice for a slow query, but an index
+isn't free: it slows writes, takes space, and sometimes the planner ignores
+it. Whether it helps depends on the data and the query, and the only way to
+know is to try it on both sides.
+
+PLANSHIFT does that comparison properly. You point it at a table and a
+query, choose the index to test, and it:
+
+1. times the query **without** the index,
+2. creates the index,
+3. times the same query **with** it,
+4. captures Postgres's real execution plan both times, and
+5. tells you what changed: faster, slower, or no meaningful difference, and
+   which scan strategy the planner switched between.
+
+## How it works
+
+```mermaid
+sequenceDiagram
+    participant UI as React UI
+    participant API as Spring Boot API
+    participant PG as PostgreSQL
+
+    UI->>API: start experiment (table, query, index columns)
+    API->>PG: save experiment as RUNNING
+    API-->>UI: 202 + experiment id
+    Note over API,PG: background thread
+    API->>PG: drop PLANSHIFT indexes on the table
+    API->>PG: warm up, time the query N times, EXPLAIN ANALYZE
+    API->>PG: CREATE INDEX
+    API->>PG: warm up, time the query N times, EXPLAIN ANALYZE
+    API->>PG: save medians, % change, plan diff, status
+    loop while RUNNING
+        UI->>API: GET experiment
+        API-->>UI: current phase
+    end
+    UI->>API: GET experiment
+    API-->>UI: results
+```
+
+The progress you see in the UI is the real phase the background thread is
+in, not a timer.
+
+Each query's time is the **median** of N runs, because a single timing is
+mostly noise. The change is `(after - before) / before`, and a threshold
+(20% by default) sorts it:
+
+```mermaid
+flowchart LR
+    A["change = (after - before) / before"] --> B{"vs threshold"}
+    B -- "at most -20%" --> C["IMPROVED"]
+    B -- "between" --> D["UNCHANGED"]
+    B -- "at least +20%" --> E["REGRESSED"]
+```
+
+You can run the built-in 10-query workload against a synthetic e-commerce
+dataset, or use the **query builder** on any table, including your own CSV
+(Postgres loads it with `COPY` and infers a type per column).
 
 ## Architecture
 
-```
-React (TypeScript, Vite)  ──HTTP──▶  Spring Boot REST API  ──JDBC──▶  PostgreSQL
-     port 5173                          port 8080                    port 5432
+```mermaid
+flowchart LR
+    UI["React + TypeScript<br/>(Vite)"] -- "REST / JSON" --> API
+
+    subgraph API["Spring Boot API"]
+        direction TB
+        CT["controllers"] --> EX["experiment<br/>orchestrator"]
+        CT --> QB["querybuilder"]
+        CT --> DI["dataimport<br/>(CSV to COPY)"]
+        EX --> BM["benchmark<br/>(repeat + median)"]
+        EX --> QP["queryplan<br/>(EXPLAIN parse + diff)"]
+        EX --> IX["index changes"]
+        QB --> SC["schema<br/>(validates every identifier)"]
+        IX --> SC
+    end
+
+    API -- JDBC --> PG[("PostgreSQL 16")]
 ```
 
-Backend package layout (`backend/src/main/java/com/planshift/`):
+No microservices, queue or ORM: a JDBC-backed Spring Boot API and a static
+React frontend. The problem didn't need more.
+
+Backend packages (`backend/src/main/java/com/planshift/`):
 
 | Package | Responsibility |
 |---|---|
@@ -37,15 +110,45 @@ Backend package layout (`backend/src/main/java/com/planshift/`):
 | `benchmark` | Times query execution, repeated and median-aggregated |
 | `queryplan` | Captures `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`, parses it into a tree, diffs two trees |
 | `experiment` | Baseline-vs-candidate orchestration, async with real progress phases, regression classification, persistence |
-| `schema` | Live introspection via `information_schema` — backs the query builder and validates every identifier before it reaches SQL |
-| `querybuilder` | Structured table/columns/filter spec → parameterized SQL, no raw SQL accepted |
-| `dataimport` | CSV → Postgres table via `COPY`, with per-column type inference |
+| `schema` | Live introspection via `information_schema`; backs the query builder and validates every identifier before it reaches SQL |
+| `querybuilder` | Structured table/columns/filter spec to parameterized SQL, no raw SQL accepted |
+| `dataimport` | CSV to Postgres table via `COPY`, streamed, with per-column type inference |
 | `controller` | REST API |
 
-No microservices, no message queue, no ORM — a JDBC-backed Spring Boot API
-and a static React frontend. The problem didn't need more than that.
+### Where it runs
 
-## How it works
+```mermaid
+flowchart LR
+    U(["Browser"]) --> V["Vercel<br/>static React build"]
+    V -- "REST" --> R["Render<br/>Spring Boot (Docker)"]
+    R -- "JDBC + SSL" --> N[("Neon<br/>Postgres, us-west-2")]
+    G["GitHub Actions<br/>keep-alive ping"] -. "/api/ping" .-> R
+```
+
+The free Render instance sleeps when idle, so a scheduled GitHub Actions job
+pings it. The connection pool is tuned for Neon, which suspends idle
+databases and drops connections.
+
+## Example: real data, a different dataset
+
+564,516 rows from [fivethirtyeight's Uber pickups
+data](https://github.com/fivethirtyeight/uber-tlc-foil-response) (April
+2014, 26 MB CSV), imported through the app: `date_time`, `lat`, `lon`,
+`base`. The query filters on one latitude value; the same query is tested
+with two different indexes (7 runs each, median):
+
+| Index | Before | After | Change | What the planner did |
+|---|---:|---:|---:|---|
+| `lat` | 7.12 ms | 0.51 ms | -92.9% | Seq Scan to Bitmap Index Scan |
+| `(base, lat)` | 9.52 ms | 7.19 ms | -24.5% | No plan change (the drop is timing noise) |
+
+Same columns, very different outcome. A composite index is ordered, so
+`(base, lat)` is only useful for filters that start with `base`. The query
+filters on `lat` alone, so the planner ignores the index and keeps scanning
+the table. That's the kind of thing that's easy to get wrong and invisible
+until you measure it.
+
+## Design notes
 
 **Dataset.** A synthetic e-commerce schema — customers, products, orders,
 order_items — generated from a fixed seed, so re-running the generator
@@ -97,12 +200,14 @@ inferred per column. The upload is spooled to a temp file and read twice
 
 The index can be composite: pick several columns and their click order is
 the index order, which matters, because the planner can use `(a, b)` for
-filters on `a` or on `a` and `b` together but not on `b` alone. Before the
-baseline, PLANSHIFT drops every index it created earlier that leads with
-the same column. Without that, a leftover single-column index from a
-previous run would serve the composite experiment's "before" and hide the
-real effect. Indexes you made yourself are never dropped, and the schema
-view marks columns that already have one.
+filters on `a` or on `a` and `b` together but not on `b` alone (see the
+Uber example above). Before the baseline, PLANSHIFT drops every index it
+created earlier on that table, so "before" means "none of ours". Without
+that, a leftover index from a previous run would serve the query and hide
+the real effect; I hit this while building the Uber example, where an
+earlier `lat` index made the composite experiment's baseline 10x faster than
+it should have been. Indexes you made yourself are never dropped, and the
+schema view marks columns that already have one.
 
 **Reading the results.** Each run gets a one-sentence finding computed from
 the result rows, a before/after dot per query with the scan strategy that
@@ -169,22 +274,6 @@ A smaller early run (1,000 customers) showed every query "improving,"
 which turned out to be the cache-warming bug above, not the index. Kept
 here because catching your own benchmark's confound is a more useful
 result than pretending it didn't happen.
-
-## Example: a custom dataset
-
-A 3-row CSV (`title, year, rating, genre`) imported through the UI:
-Postgres inferred `year` as `BIGINT`, `rating` as `DOUBLE PRECISION`,
-`title`/`genre` as `TEXT`. Built a query filtering on genre, ran it as an
-experiment indexing that column:
-
-```
-Custom query on kaggle_movies: 0.1812 ms -> 0.3073 ms  (+69.6%)  REGRESSED
-```
-
-Correct result for data this small — an index on a 3-row table is pure
-overhead with nothing to look up. It's also decent evidence the detector
-isn't wired to say "faster" by default: it reports what happens, including
-when that's a regression.
 
 ## Testing
 
