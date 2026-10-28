@@ -1,6 +1,7 @@
 package com.planshift.experiment;
 
 import com.planshift.schema.SchemaService;
+import com.planshift.schema.IndexNaming;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -54,10 +55,7 @@ public class IndexChangeService {
     }
 
     private String indexName(String table, String column) {
-        if ("orders".equals(table) && "customer_id".equals(column)) {
-            return "idx_orders_customer_id";
-        }
-        return "idx_planshift_" + table + "_" + column;
+        return IndexNaming.managedName(table, column);
     }
 
     private void requireValid(String table, String column) {

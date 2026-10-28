@@ -4,6 +4,7 @@ import java.util.List;
 
 public record TableInfo(
         String tableName,
-        List<ColumnInfo> columns
+        List<ColumnInfo> columns,
+        long rowEstimate
 ) {
 }
