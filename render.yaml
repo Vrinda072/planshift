@@ -1,8 +1,3 @@
-databases:
-  - name: planshift-db
-    plan: free
-    postgresMajorVersion: "16"
-
 services:
   - type: web
     name: planshift-backend
@@ -11,27 +6,17 @@ services:
     dockerContext: ./backend
     plan: free
     envVars:
+      # Postgres lives on Neon (free tier, no expiry). Values come from the
+      # Neon dashboard; set them in Render, not here.
       - key: DB_HOST
-        fromDatabase:
-          name: planshift-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: planshift-db
-          property: port
+        sync: false
       - key: DB_NAME
-        fromDatabase:
-          name: planshift-db
-          property: database
+        sync: false
       - key: DB_USER
-        fromDatabase:
-          name: planshift-db
-          property: user
+        sync: false
       - key: DB_PASSWORD
-        fromDatabase:
-          name: planshift-db
-          property: password
-      # Set this to your deployed frontend's origin once you have it
-      # (e.g. https://planshift.vercel.app), no trailing slash.
+        sync: false
+      - key: DB_PARAMS
+        value: "?sslmode=require"
       - key: ALLOWED_ORIGINS
-        value: http://localhost:5173
+        value: http://localhost:5173,https://frontend-mauve-two-60.vercel.app
