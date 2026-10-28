@@ -1,15 +1,23 @@
-import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { api } from "../api/client";
 import { IconFlask, IconGithub, IconList, IconMark, IconOverview, IconSliders, IconTrend } from "./Icons";
 
 const linkClass = ({ isActive }: { isActive: boolean }) => `nav-link${isActive ? " active" : ""}`;
 
 export function Nav() {
+  const { pathname } = useLocation();
+  const [regressions, setRegressions] = useState(0);
+
+  // Refresh on navigation so the count is right after a run finishes.
+  useEffect(() => {
+    api.listRegressions().then((r) => setRegressions(r.length)).catch(() => setRegressions(0));
+  }, [pathname]);
+
   return (
     <nav className="sidebar">
       <div className="brand">
-        <span className="brand-mark">
-          <IconMark />
-        </span>
+        <IconMark />
         planshift
       </div>
 
@@ -26,6 +34,7 @@ export function Nav() {
         <NavLink to="/regressions" className={linkClass}>
           <IconTrend />
           Regressions
+          {regressions > 0 && <span className="nav-count" aria-label={`${regressions} regressed queries`}>{regressions}</span>}
         </NavLink>
       </div>
 

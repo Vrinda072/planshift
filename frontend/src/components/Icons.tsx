@@ -70,8 +70,23 @@ export const IconArrowRight = () => (
   </Svg>
 );
 
+/** Before and after: the tall bar is the query as it was, the short one is what the index made of it. */
 export const IconMark = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-    <path d="M2 9.5V2.5h4.2a2.4 2.4 0 0 1 0 4.8H2" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+    <rect x="3" y="3" width="6" height="16" rx="2" fill="#0a0a0a" />
+    <rect x="13" y="10" width="6" height="9" rx="2" fill="#17b26a" />
   </svg>
+);
+
+export const IconSearch = () => (
+  <Svg size={14}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </Svg>
+);
+
+export const IconDownload = () => (
+  <Svg size={14}>
+    <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+  </Svg>
 );

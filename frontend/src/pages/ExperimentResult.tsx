@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { api } from "../api/client";
 import type { Experiment } from "../api/types";
 import { changeClassName, formatChangeText, formatDate, formatMs } from "../format";
 import { AnimatedNumber } from "../components/AnimatedNumber";
@@ -8,7 +9,12 @@ import { InfoTooltip } from "../components/InfoTooltip";
 import { PageHeader } from "../components/PageHeader";
 import { PlanTreeCompare } from "../components/PlanTreeCompare";
 import { QueryComparisonChart } from "../components/QueryComparisonChart";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useExperimentPolling } from "../hooks/useExperimentPolling";
+import { exportCsv, exportJson } from "../lib/export";
+import { strategyChange } from "../lib/plan";
+import { verdict } from "../lib/verdict";
+import { IconDownload } from "../components/Icons";
 
 function MetaRow({ experiment }: { experiment: Experiment }) {
   const target = `${experiment.targetTable ?? "orders"}.${experiment.targetColumn ?? "customer_id"}`;
@@ -42,6 +48,31 @@ export function ExperimentResult() {
   const { id } = useParams<{ id: string }>();
   const { experiment, error } = useExperimentPolling(id ? Number(id) : null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
+  const [rerunning, setRerunning] = useState(false);
+  const navigate = useNavigate();
+  useDocumentTitle(`Experiment #${id ?? ""}`);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard unavailable (insecure context); nothing useful to do
+    }
+  };
+
+  const rerun = async () => {
+    if (!experiment) return;
+    setRerunning(true);
+    try {
+      const started = await api.startExperiment(experiment.repetitions, experiment.thresholdFraction);
+      navigate(`/experiments/${started.experimentId}`);
+    } finally {
+      setRerunning(false);
+    }
+  };
 
   const toggle = (queryId: string) => {
     setExpanded((prev) => {
@@ -85,6 +116,8 @@ export function ExperimentResult() {
   const unchanged = results.length - improved - regressed;
   const overall = experiment.overallPercentageChange;
 
+  const finding = verdict(experiment);
+
   return (
     <div>
       <PageHeader
@@ -94,6 +127,19 @@ export function ExperimentResult() {
             <span className="status completed" style={{ verticalAlign: "middle", marginLeft: 6, fontSize: 13, fontWeight: 400, letterSpacing: 0 }}>
               Completed
             </span>
+          </>
+        }
+        sub={finding ?? undefined}
+        actions={
+          <>
+            <button className="btn btn-sm" onClick={copyLink}>{copied ? "Copied" : "Copy link"}</button>
+            <button className="btn btn-sm" onClick={() => exportCsv(experiment)}><IconDownload />CSV</button>
+            <button className="btn btn-sm" onClick={() => exportJson(experiment)}><IconDownload />JSON</button>
+            {experiment.experimentType !== "CUSTOM_QUERY" && (
+              <button className="btn btn-primary btn-sm" onClick={rerun} disabled={rerunning}>
+                {rerunning ? "Starting..." : "Run again"}
+              </button>
+            )}
           </>
         }
       >
@@ -162,8 +208,12 @@ export function ExperimentResult() {
                     <tr>
                       <td>
                         <div className="cell-main">{r.queryName}</div>
+                        {(() => {
+                          const change = strategyChange(r.baselinePlanJson, r.candidatePlanJson);
+                          return change ? <div className="cell-sub">{change.before} to {change.after}</div> : null;
+                        })()}
                         <button className="see-why-toggle" onClick={() => toggle(r.queryId)} aria-expanded={isOpen}>
-                          {isOpen ? "Hide plan" : "See plan change"}
+                          {isOpen ? "Hide plan" : "See plan"}
                         </button>
                       </td>
                       <td className="num mono sub">

@@ -7,6 +7,7 @@ import { AnimatedNumber } from "../components/AnimatedNumber";
 import { CopyButton } from "../components/CopyButton";
 import { ImportDataPanel } from "../components/ImportDataPanel";
 import { PageHeader } from "../components/PageHeader";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { changeClassName, formatChangeText } from "../format";
 
 const OPERATORS = ["=", "!=", ">", "<", ">=", "<=", "LIKE"];
@@ -16,6 +17,7 @@ export function QueryBuilder() {
   const [tables, setTables] = useState<TableInfo[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  useDocumentTitle("Query builder");
 
   const [table, setTable] = useState("");
   const [selectColumns, setSelectColumns] = useState<string[]>([]);
@@ -49,7 +51,9 @@ export function QueryBuilder() {
     refreshTables().then(() => setTable(newTableName));
   };
 
-  const columns = useMemo(() => tables?.find((t) => t.tableName === table)?.columns ?? [], [tables, table]);
+  const tableInfo = useMemo(() => tables?.find((t) => t.tableName === table) ?? null, [tables, table]);
+  const columns = useMemo(() => tableInfo?.columns ?? [], [tableInfo]);
+  const indexedNames = useMemo(() => columns.filter((c) => c.indexed).map((c) => c.columnName), [columns]);
 
   const spec: QuerySpec = useMemo(
     () => ({
@@ -89,6 +93,7 @@ export function QueryBuilder() {
   }, [spec, table]);
 
   const effectiveIndexColumn = indexColumn || filterColumn;
+  const alreadyIndexed = columns.some((c) => c.columnName === effectiveIndexColumn && c.indexed);
 
   const predictImpact = async () => {
     if (!effectiveIndexColumn) {
@@ -145,7 +150,6 @@ export function QueryBuilder() {
           <section className="panel">
             <div className="step">
               <div className="step-head">
-                <span className="step-num">1</span>
                 <span className="step-title">Dataset</span>
               </div>
               <div className="form-field" style={{ marginBottom: 16 }}>
@@ -168,10 +172,21 @@ export function QueryBuilder() {
                 >
                   <option value="">Select a table...</option>
                   {tables.map((t) => (
-                    <option key={t.tableName} value={t.tableName}>{t.tableName}</option>
+                    <option key={t.tableName} value={t.tableName}>{t.tableName} ({t.rowEstimate.toLocaleString()} rows)</option>
                   ))}
                 </select>
               </div>
+              {tableInfo && (
+                <p className="table-facts">
+                  <span className="tnum">{tableInfo.rowEstimate.toLocaleString()}</span> rows,{" "}
+                  <span className="tnum">{tableInfo.columns.length}</span> columns.{" "}
+                  {indexedNames.length > 0 ? (
+                    <>Already indexed: <span className="mono">{indexedNames.join(", ")}</span>.</>
+                  ) : (
+                    "No indexes besides the ones PLANSHIFT manages."
+                  )}
+                </p>
+              )}
               <ImportDataPanel onImported={handleImported} />
             </div>
 
@@ -179,7 +194,6 @@ export function QueryBuilder() {
               <>
                 <div className="step fade-section">
                   <div className="step-head">
-                    <span className="step-num">2</span>
                     <span className="step-title">Select</span>
                     <span className="step-opt">columns, or aggregate</span>
                   </div>
@@ -219,6 +233,7 @@ export function QueryBuilder() {
                           <label key={c.columnName} className="chip">
                             <input type="checkbox" checked={selectColumns.includes(c.columnName)} onChange={() => toggleSelectColumn(c.columnName)} />
                             {c.columnName}
+                            {c.indexed && <span className="chip-idx" title="Already indexed">idx</span>}
                           </label>
                         ))}
                       </div>
@@ -228,7 +243,6 @@ export function QueryBuilder() {
 
                 <div className="step fade-section" style={{ animationDelay: "50ms" }}>
                   <div className="step-head">
-                    <span className="step-num">3</span>
                     <span className="step-title">Filter</span>
                     <span className="step-opt">optional</span>
                   </div>
@@ -259,7 +273,6 @@ export function QueryBuilder() {
 
                 <div className="step fade-section" style={{ animationDelay: "100ms" }}>
                   <div className="step-head">
-                    <span className="step-num">4</span>
                     <span className="step-title">Order and limit</span>
                     <span className="step-opt">optional</span>
                   </div>
@@ -322,9 +335,15 @@ export function QueryBuilder() {
                     <label>Index column</label>
                     <select value={indexColumn} onChange={(e) => setIndexColumn(e.target.value)}>
                       <option value="">{filterColumn ? `Default: ${filterColumn}` : "Choose a column..."}</option>
-                      {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
+                      {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}{c.indexed ? " (already indexed)" : ""}</option>)}
                     </select>
                   </div>
+                  {alreadyIndexed && (
+                    <p className="inline-warning">
+                      <span className="mono">{effectiveIndexColumn}</span> already has an index that PLANSHIFT won't
+                      drop, so the baseline will use it too. Expect little or no change.
+                    </p>
+                  )}
                   <div className="form-row" style={{ marginTop: 12, gap: 12 }}>
                     <div className="field">
                       <label>Repetitions</label>

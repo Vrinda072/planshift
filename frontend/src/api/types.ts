@@ -67,11 +67,14 @@ export interface ColumnInfo {
   columnName: string;
   dataType: string;
   nullable: boolean;
+  /** Has an index PLANSHIFT does not manage (and so will not drop for the baseline). */
+  indexed: boolean;
 }
 
 export interface TableInfo {
   tableName: string;
   columns: ColumnInfo[];
+  rowEstimate: number;
 }
 
 export interface QuerySpec {
