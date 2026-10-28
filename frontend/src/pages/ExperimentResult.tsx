@@ -1,12 +1,42 @@
 import { Fragment, useState } from "react";
 import { useParams } from "react-router-dom";
-import { changeClassName, formatChangeText, formatMs } from "../format";
-import { PlanTreeCompare } from "../components/PlanTreeCompare";
+import type { Experiment } from "../api/types";
+import { changeClassName, formatChangeText, formatDate, formatMs } from "../format";
+import { AnimatedNumber } from "../components/AnimatedNumber";
 import { ExperimentProgress } from "../components/ExperimentProgress";
 import { InfoTooltip } from "../components/InfoTooltip";
+import { PageHeader } from "../components/PageHeader";
+import { PlanTreeCompare } from "../components/PlanTreeCompare";
 import { QueryComparisonChart } from "../components/QueryComparisonChart";
-import { AnimatedNumber } from "../components/AnimatedNumber";
 import { useExperimentPolling } from "../hooks/useExperimentPolling";
+
+function MetaRow({ experiment }: { experiment: Experiment }) {
+  const target = `${experiment.targetTable ?? "orders"}.${experiment.targetColumn ?? "customer_id"}`;
+  return (
+    <div className="meta-row">
+      <span className="meta-item">
+        <span className="meta-k">Type</span>
+        {experiment.experimentType === "CUSTOM_QUERY" ? "Custom query" : "Built-in workload"}
+      </span>
+      <span className="meta-item">
+        <span className="meta-k">Index on</span>
+        <span className="mono">{target}</span>
+      </span>
+      <span className="meta-item">
+        <span className="meta-k">Runs</span>
+        <span className="mono">{experiment.repetitions} per query</span>
+      </span>
+      <span className="meta-item">
+        <span className="meta-k">Threshold</span>
+        <span className="mono">{(experiment.thresholdFraction * 100).toFixed(0)}%</span>
+      </span>
+      <span className="meta-item">
+        <span className="meta-k">Ran</span>
+        {formatDate(experiment.createdAt)}
+      </span>
+    </div>
+  );
+}
 
 export function ExperimentResult() {
   const { id } = useParams<{ id: string }>();
@@ -28,8 +58,9 @@ export function ExperimentResult() {
   if (experiment.status === "RUNNING") {
     return (
       <div>
-        <div className="category-tag">Experiment #{experiment.experimentId}</div>
-        <h1 className="accent-italic">Running experiment</h1>
+        <PageHeader title={`Experiment #${experiment.experimentId}`}>
+          <MetaRow experiment={experiment} />
+        </PageHeader>
         <ExperimentProgress currentPhase={experiment.currentPhase} />
       </div>
     );
@@ -38,8 +69,9 @@ export function ExperimentResult() {
   if (experiment.status === "FAILED") {
     return (
       <div>
-        <div className="category-tag">Experiment #{experiment.experimentId}</div>
-        <h1 className="accent-italic">Experiment failed</h1>
+        <PageHeader title={`Experiment #${experiment.experimentId}`}>
+          <MetaRow experiment={experiment} />
+        </PageHeader>
         <div className="error-banner">
           Something went wrong while running this experiment. Check the backend logs for details.
         </div>
@@ -47,73 +79,100 @@ export function ExperimentResult() {
     );
   }
 
-  const regressions = experiment.queryResults.filter((r) => r.status === "REGRESSED");
+  const results = experiment.queryResults;
+  const improved = results.filter((r) => r.status === "IMPROVED").length;
+  const regressed = results.filter((r) => r.status === "REGRESSED").length;
+  const unchanged = results.length - improved - regressed;
+  const overall = experiment.overallPercentageChange;
 
   return (
     <div>
-      <div className="category-tag">Experiment #{experiment.experimentId}</div>
-      <h1 className="accent-italic">Experiment complete</h1>
+      <PageHeader
+        title={
+          <>
+            Experiment #{experiment.experimentId}{" "}
+            <span className="status completed" style={{ verticalAlign: "middle", marginLeft: 6, fontSize: 13, fontWeight: 400, letterSpacing: 0 }}>
+              Completed
+            </span>
+          </>
+        }
+      >
+        <MetaRow experiment={experiment} />
+      </PageHeader>
 
-      {experiment.overallPercentageChange !== null && (
-        <div className="card" style={{ marginBottom: 24, marginTop: 16 }}>
-          <div className="category-tag">
-            Overall performance
+      <div className="strip">
+        <div className="strip-cell">
+          <div className="strip-label">
+            Overall change
             <InfoTooltip text="The median of each query's percentage change. Median (not average) so one especially large swing in a single query doesn't dominate the headline number." />
           </div>
-          <div className={`change-value ${changeClassName(experiment.overallPercentageChange)}`} style={{ fontSize: 32 }}>
-            <AnimatedNumber value={experiment.overallPercentageChange} format={formatChangeText} />
+          <div className={`strip-value ${overall === null ? "" : overall <= 0 ? "good" : "bad"}`}>
+            {overall === null ? "–" : <AnimatedNumber value={overall} format={formatChangeText} />}
           </div>
+          <div className="strip-hint">median across {results.length} {results.length === 1 ? "query" : "queries"}</div>
         </div>
-      )}
-
-      {regressions.length > 0 && (
-        <div className="error-banner">
-          ⚠ {regressions.length} regression{regressions.length > 1 ? "s" : ""} detected:{" "}
-          {regressions.map((r) => r.queryName).join(", ")}
+        <div className="strip-cell">
+          <div className="strip-label">Improved</div>
+          <div className={`strip-value ${improved ? "good" : ""}`}>{improved}</div>
+          <div className="strip-hint">faster by more than {(experiment.thresholdFraction * 100).toFixed(0)}%</div>
         </div>
-      )}
+        <div className="strip-cell">
+          <div className="strip-label">Unchanged</div>
+          <div className="strip-value">{unchanged}</div>
+          <div className="strip-hint">within the threshold</div>
+        </div>
+        <div className="strip-cell">
+          <div className="strip-label">Regressed</div>
+          <div className={`strip-value ${regressed ? "bad" : ""}`}>{regressed}</div>
+          <div className="strip-hint">slower by more than {(experiment.thresholdFraction * 100).toFixed(0)}%</div>
+        </div>
+      </div>
 
-      <div className="section">
-        <h2>Per-query results</h2>
-        <p style={{ color: "var(--text-tertiary)", fontSize: 12, marginTop: -8 }}>
-          Median of {experiment.repetitions} runs per configuration &middot; regression threshold{" "}
-          {(experiment.thresholdFraction * 100).toFixed(0)}%
-        </p>
-        <div className="card" style={{ marginBottom: 20 }}>
-          <QueryComparisonChart results={experiment.queryResults} />
+      <section className="panel">
+        <div className="panel-head">
+          <h2 className="panel-title">Median time per query</h2>
+          <span className="panel-meta">median of {experiment.repetitions} runs, log scale</span>
+        </div>
+        <div className="panel-body">
+          <QueryComparisonChart results={results} />
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2 className="panel-title">Results</h2>
+          <span className="panel-meta">Expand a row to see what the planner changed</span>
         </div>
         <div className="table-scroll">
           <table>
             <thead>
               <tr>
                 <th>Query</th>
-                <th>Before</th>
-                <th>After</th>
-                <th>Change</th>
+                <th className="num">Before</th>
+                <th className="num">After</th>
+                <th className="num">Change</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {experiment.queryResults.map((r) => {
+              {results.map((r) => {
                 const isOpen = expanded.has(r.queryId);
                 return (
                   <Fragment key={r.queryId}>
                     <tr>
                       <td>
-                        {r.queryName}
-                        <div>
-                          <button
-                            className="see-why-toggle"
-                            onClick={() => toggle(r.queryId)}
-                            aria-expanded={isOpen}
-                          >
-                            {isOpen ? "Hide plan" : "See why"}
-                          </button>
-                        </div>
+                        <div className="cell-main">{r.queryName}</div>
+                        <button className="see-why-toggle" onClick={() => toggle(r.queryId)} aria-expanded={isOpen}>
+                          {isOpen ? "Hide plan" : "See plan change"}
+                        </button>
                       </td>
-                      <td className="mono"><AnimatedNumber value={r.baselineMedianMs} format={formatMs} /></td>
-                      <td className="mono"><AnimatedNumber value={r.candidateMedianMs} format={formatMs} /></td>
-                      <td>
+                      <td className="num mono sub">
+                        <AnimatedNumber value={r.baselineMedianMs} format={formatMs} />
+                      </td>
+                      <td className="num mono">
+                        <AnimatedNumber value={r.candidateMedianMs} format={formatMs} />
+                      </td>
+                      <td className="num">
                         <span className={`change-value ${changeClassName(r.percentageChange)}`}>
                           {formatChangeText(r.percentageChange)}
                         </span>
@@ -124,25 +183,23 @@ export function ExperimentResult() {
                             r.status === "IMPROVED" ? "badge-improved" : r.status === "REGRESSED" ? "badge-regressed" : "badge-unchanged"
                           }`}
                         >
-                          {r.status}
+                          {r.status === "IMPROVED" ? "Improved" : r.status === "REGRESSED" ? "Regressed" : "Unchanged"}
                         </span>
                       </td>
                     </tr>
-                    {/* Always mounted (rather than only rendered when open) so the
-                        expand/collapse can animate its height smoothly via the
-                        accordion grid-rows trick -- a table row can't otherwise
-                        transition from height 0, since row height isn't a real
-                        animatable CSS property. */}
-                    <tr className="no-entrance">
-                      <td colSpan={5} style={{ padding: 0, border: "none" }}>
+                    {/* Always mounted so the expand/collapse can animate its height
+                        via the grid-rows trick; a table row can't transition from
+                        height 0 on its own. */}
+                    <tr className="no-entrance accordion-row">
+                      <td colSpan={5}>
                         <div className={`accordion${isOpen ? " open" : ""}`}>
                           <div className="accordion-inner">
-                            <div style={{ background: "var(--bg)", padding: "12px" }}>
-                              <div className="query-sql" style={{ marginBottom: 4 }}>{r.planDiffSummary}</div>
-                              <div style={{ color: "var(--text-tertiary)", fontSize: 11.5, marginBottom: 12 }}>
-                                Each box below is one step ("node") in Postgres's real execution plan for this query.
-                                Boxes outlined in blue changed between before and after.
-                              </div>
+                            <div className="accordion-body">
+                              <p className="accordion-summary">{r.planDiffSummary}</p>
+                              <p className="accordion-hint">
+                                Each box is one step in Postgres's real execution plan for this query. Highlighted
+                                boxes changed between before and after.
+                              </p>
                               <PlanTreeCompare baselinePlanJson={r.baselinePlanJson} candidatePlanJson={r.candidatePlanJson} />
                             </div>
                           </div>
@@ -155,7 +212,7 @@ export function ExperimentResult() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

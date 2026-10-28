@@ -1,38 +1,51 @@
 import { NavLink } from "react-router-dom";
-import { useHealthStatus } from "../hooks/useHealthStatus";
+import { IconFlask, IconGithub, IconList, IconMark, IconOverview, IconSliders, IconTrend } from "./Icons";
 
-const HEALTH_LABEL: Record<ReturnType<typeof useHealthStatus>, string> = {
-  checking: "Checking...",
-  online: "API connected",
-  offline: "API unreachable",
-};
+const linkClass = ({ isActive }: { isActive: boolean }) => `nav-link${isActive ? " active" : ""}`;
 
 export function Nav() {
-  const health = useHealthStatus();
-
   return (
     <nav className="sidebar">
-      <div className="brand">PLANSHIFT</div>
-      <div className="nav-links">
-        <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+      <div className="brand">
+        <span className="brand-mark">
+          <IconMark />
+        </span>
+        planshift
+      </div>
+
+      <div className="nav-group">
+        <div className="nav-group-label">Workspace</div>
+        <NavLink to="/" end className={linkClass}>
+          <IconOverview />
           Overview
         </NavLink>
-        <NavLink to="/experiments" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+        <NavLink to="/experiments" className={linkClass}>
+          <IconFlask />
           Experiments
         </NavLink>
-        <NavLink to="/queries" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
-          Queries
-        </NavLink>
-        <NavLink to="/query-builder" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
-          Query Builder
-        </NavLink>
-        <NavLink to="/regressions" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+        <NavLink to="/regressions" className={linkClass}>
+          <IconTrend />
           Regressions
         </NavLink>
       </div>
-      <div className="nav-footer" title="Live status of GET /api/health, checked every 15s">
-        <span className={`health-dot ${health}`} />
-        {HEALTH_LABEL[health]}
+
+      <div className="nav-group">
+        <div className="nav-group-label">Build</div>
+        <NavLink to="/query-builder" className={linkClass}>
+          <IconSliders />
+          Query builder
+        </NavLink>
+        <NavLink to="/queries" className={linkClass}>
+          <IconList />
+          Workload
+        </NavLink>
+      </div>
+
+      <div className="sidebar-foot">
+        <a href="https://github.com/Vrinda072/planshift" target="_blank" rel="noreferrer">
+          <IconGithub />
+          Source
+        </a>
       </div>
     </nav>
   );

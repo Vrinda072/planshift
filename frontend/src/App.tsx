@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Nav } from "./components/Nav";
+import { Topbar } from "./components/Topbar";
 import { Overview } from "./pages/Overview";
 import { Experiments } from "./pages/Experiments";
 import { ExperimentResult } from "./pages/ExperimentResult";
@@ -29,11 +30,14 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="app-shell">
+      <div className="app">
         <Nav />
-        <main className="main">
-          <AnimatedRoutes />
-        </main>
+        <div className="main-col">
+          <Topbar />
+          <main className="content">
+            <AnimatedRoutes />
+          </main>
+        </div>
       </div>
     </BrowserRouter>
   );

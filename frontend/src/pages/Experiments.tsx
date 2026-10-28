@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Experiment } from "../api/types";
 import { changeClassName, formatChangeText, formatDate } from "../format";
+import { PageHeader } from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
 
 export function Experiments() {
@@ -13,11 +14,9 @@ export function Experiments() {
   const [thresholdPercent, setThresholdPercent] = useState(20);
   const navigate = useNavigate();
 
-  const refresh = () => {
+  useEffect(() => {
     api.listExperiments().then(setExperiments).catch((e) => setError(e.message));
-  };
-
-  useEffect(refresh, []);
+  }, []);
 
   const runExperiment = async () => {
     setRunning(true);
@@ -36,51 +35,69 @@ export function Experiments() {
 
   return (
     <div>
-      <h1 className="accent-italic">Experiments</h1>
-      <p className="subtitle">
-        The built-in experiment: index added vs. index absent on <code>orders.customer_id</code>, run against
-        the full 10-query workload. For a query and index target of your own choosing, use the{" "}
-        <a href="/query-builder" style={{ color: "var(--accent)" }}>Query Builder</a> instead.
-      </p>
+      <PageHeader
+        title="Experiments"
+        sub={
+          <>
+            Each run drops, then adds, an index on <code>orders.customer_id</code> and times the full 10-query
+            workload both ways. For your own query and column, use the{" "}
+            <Link to="/query-builder" style={{ color: "var(--accent)" }}>query builder</Link>.
+          </>
+        }
+      />
 
-      <div className="card">
-        <h2>Run a new experiment</h2>
-        <div className="form-row">
-          <div className="form-field">
-            <label htmlFor="repetitions">Repetitions per query</label>
-            <input
-              id="repetitions"
-              type="number"
-              min={1}
-              max={20}
-              value={repetitions}
-              onChange={(e) => setRepetitions(Number(e.target.value))}
-              disabled={running}
-            />
-          </div>
-          <div className="form-field">
-            <label htmlFor="threshold">Regression threshold (%)</label>
-            <input
-              id="threshold"
-              type="number"
-              min={1}
-              max={100}
-              value={thresholdPercent}
-              onChange={(e) => setThresholdPercent(Number(e.target.value))}
-              disabled={running}
-            />
-          </div>
-          <button className="btn btn-primary" onClick={runExperiment} disabled={running}>
-            {running ? "Starting..." : "Run Experiment"}
-          </button>
+      <section className="panel">
+        <div className="panel-head">
+          <h2 className="panel-title">Run the built-in experiment</h2>
         </div>
-        {error && <div className="error-banner">{error}</div>}
-      </div>
+        <div className="panel-body">
+          <div className="form-row">
+            <div className="form-field">
+              <label htmlFor="repetitions">Repetitions per query</label>
+              <input
+                id="repetitions"
+                type="number"
+                min={1}
+                max={20}
+                value={repetitions}
+                onChange={(e) => setRepetitions(Number(e.target.value))}
+                disabled={running}
+                style={{ width: 150 }}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="threshold">Regression threshold (%)</label>
+              <input
+                id="threshold"
+                type="number"
+                min={1}
+                max={100}
+                value={thresholdPercent}
+                onChange={(e) => setThresholdPercent(Number(e.target.value))}
+                disabled={running}
+                style={{ width: 150 }}
+              />
+            </div>
+            <button className="btn btn-primary" onClick={runExperiment} disabled={running}>
+              {running ? "Starting..." : "Run experiment"}
+            </button>
+          </div>
+          {error && <div className="error-banner" style={{ marginTop: 14, marginBottom: 0 }}>{error}</div>}
+        </div>
+      </section>
 
-      <div className="section">
-        <h2>All experiments</h2>
+      <section className="panel">
+        <div className="panel-head">
+          <h2 className="panel-title">History</h2>
+          {experiments && <span className="panel-meta">{experiments.length} total</span>}
+        </div>
         {!error && experiments === null && <Skeleton rows={4} columns={7} />}
-        {experiments && experiments.length === 0 && <div className="empty-state">No experiments yet.</div>}
+        {experiments && experiments.length === 0 && (
+          <div className="empty-state">
+            <strong>No experiments yet</strong>
+            Run one above to see results here.
+          </div>
+        )}
         {experiments && experiments.length > 0 && (
           <div className="table-scroll">
             <table>
@@ -88,11 +105,11 @@ export function Experiments() {
                 <tr>
                   <th>Experiment</th>
                   <th>Target</th>
-                  <th>Reps</th>
-                  <th>Threshold</th>
+                  <th className="num">Reps</th>
+                  <th className="num">Threshold</th>
                   <th>Ran</th>
                   <th>Status</th>
-                  <th>Result</th>
+                  <th className="num">Result</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,21 +127,28 @@ export function Experiments() {
                       }
                     }}
                   >
-                    <td>#{exp.experimentId} &middot; {exp.experimentType === "CUSTOM_QUERY" ? "custom" : "built-in"}</td>
-                    <td className="mono">
+                    <td>
+                      <span className="row-id">#{exp.experimentId}</span>{" "}
+                      <span className="cell-main">{exp.experimentType === "CUSTOM_QUERY" ? "Custom query" : "Built-in workload"}</span>
+                    </td>
+                    <td className="mono sub">
                       {exp.targetTable ?? "orders"}.{exp.targetColumn ?? "customer_id"}
                     </td>
-                    <td className="mono">{exp.repetitions}</td>
-                    <td className="mono">{(exp.thresholdFraction * 100).toFixed(0)}%</td>
-                    <td>{formatDate(exp.createdAt)}</td>
-                    <td>{exp.status}</td>
+                    <td className="num mono">{exp.repetitions}</td>
+                    <td className="num mono">{(exp.thresholdFraction * 100).toFixed(0)}%</td>
+                    <td className="sub">{formatDate(exp.createdAt)}</td>
                     <td>
+                      <span className={`status ${exp.status.toLowerCase()}`}>
+                        {exp.status === "COMPLETED" ? "Completed" : exp.status === "RUNNING" ? "Running" : "Failed"}
+                      </span>
+                    </td>
+                    <td className="num">
                       {exp.status === "COMPLETED" && exp.overallPercentageChange !== null ? (
                         <span className={`change-value ${changeClassName(exp.overallPercentageChange)}`}>
                           {formatChangeText(exp.overallPercentageChange)}
                         </span>
                       ) : (
-                        "—"
+                        <span className="sub">–</span>
                       )}
                     </td>
                   </tr>
@@ -133,7 +157,7 @@ export function Experiments() {
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

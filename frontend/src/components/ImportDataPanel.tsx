@@ -13,8 +13,7 @@ export function ImportDataPanel({ onImported }: { onImported: (tableName: string
     setSuccess(null);
     setError(null);
     if (f && !tableName) {
-      const base = f.name.replace(/\.csv$/i, "");
-      setTableName(base);
+      setTableName(f.name.replace(/\.csv$/i, ""));
     }
   };
 
@@ -38,41 +37,34 @@ export function ImportDataPanel({ onImported }: { onImported: (tableName: string
   };
 
   return (
-    <div className="card" style={{ marginBottom: 24 }}>
-      <h2>Import your own dataset</h2>
-      <p style={{ color: "var(--text-secondary)", marginTop: 0, fontSize: 13 }}>
-        Upload a CSV (e.g. from Kaggle). Postgres itself parses and loads it via <code>COPY</code>; column
-        types are inferred from the data. The new table appears in the picker below immediately.
+    <div>
+      <p className="panel-note" style={{ marginBottom: 12 }}>
+        Or upload a CSV (up to 50 MB). Postgres loads it with <code>COPY</code> and infers a type per column.
       </p>
-      <div className="form-row" style={{ flexWrap: "wrap" }}>
+      <div className="form-row">
         <div className="form-field">
           <label>CSV file</label>
           <input
             type="file"
             accept=".csv,text/csv"
             onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-            style={{ fontSize: 12.5 }}
+            style={{ width: 230, paddingTop: 5, fontSize: 12 }}
           />
         </div>
         <div className="form-field">
           <label>Table name</label>
-          <input
-            type="text"
-            value={tableName}
-            onChange={(e) => setTableName(e.target.value)}
-            style={{ width: 160 }}
-          />
+          <input type="text" value={tableName} onChange={(e) => setTableName(e.target.value)} style={{ width: 160 }} />
         </div>
-        <button className="btn btn-primary" onClick={doImport} disabled={importing || !file}>
+        <button className="btn" onClick={doImport} disabled={importing || !file}>
           {importing ? "Importing..." : "Import"}
         </button>
       </div>
       {success && (
-        <div className="fade-section" style={{ color: "var(--positive)", fontSize: 13, marginTop: 8 }}>
+        <div className="fade-section" style={{ marginTop: 10, color: "var(--good)", fontSize: 13 }}>
           {success}
         </div>
       )}
-      {error && <div className="error-banner" style={{ marginTop: 12 }}>{error}</div>}
+      {error && <div className="error-banner" style={{ marginTop: 12, marginBottom: 0 }}>{error}</div>}
     </div>
   );
 }

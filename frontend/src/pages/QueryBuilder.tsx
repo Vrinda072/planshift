@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { PredictedImpact } from "../api/client";
 import type { QuerySpec, TableInfo } from "../api/types";
-import { ImportDataPanel } from "../components/ImportDataPanel";
-import { CopyButton } from "../components/CopyButton";
 import { AnimatedNumber } from "../components/AnimatedNumber";
+import { CopyButton } from "../components/CopyButton";
+import { ImportDataPanel } from "../components/ImportDataPanel";
+import { PageHeader } from "../components/PageHeader";
 import { changeClassName, formatChangeText } from "../format";
 
 const OPERATORS = ["=", "!=", ">", "<", ">=", "<=", "LIKE"];
@@ -36,7 +37,7 @@ export function QueryBuilder() {
   const [running, setRunning] = useState(false);
   const [predictedImpact, setPredictedImpact] = useState<PredictedImpact | null>(null);
   const [predicting, setPredicting] = useState(false);
-  const [predictError, setPredictError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const refreshTables = () => api.listTables().then(setTables).catch((e) => setError(e.message));
 
@@ -48,70 +49,76 @@ export function QueryBuilder() {
     refreshTables().then(() => setTable(newTableName));
   };
 
-  const columns = useMemo(
-    () => tables?.find((t) => t.tableName === table)?.columns ?? [],
-    [tables, table]
+  const columns = useMemo(() => tables?.find((t) => t.tableName === table)?.columns ?? [], [tables, table]);
+
+  const spec: QuerySpec = useMemo(
+    () => ({
+      table,
+      selectColumns: aggregateFunction ? null : selectColumns.length > 0 ? selectColumns : ["*"],
+      aggregateFunction: aggregateFunction || null,
+      aggregateColumn: aggregateFunction && aggregateFunction !== "COUNT" ? aggregateColumn || null : null,
+      groupByColumn: aggregateFunction ? groupByColumn || null : null,
+      filterColumn: filterColumn || null,
+      filterOperator: filterColumn ? filterOperator : null,
+      filterValue: filterColumn ? filterValue : null,
+      orderByColumn: orderByColumn || null,
+      orderByDirection: orderByColumn ? orderByDirection : null,
+      limit,
+    }),
+    [table, selectColumns, aggregateFunction, aggregateColumn, groupByColumn, filterColumn, filterOperator,
+      filterValue, orderByColumn, orderByDirection, limit]
   );
 
-  const buildSpec = (): QuerySpec => ({
-    table,
-    selectColumns: aggregateFunction ? null : selectColumns.length > 0 ? selectColumns : ["*"],
-    aggregateFunction: aggregateFunction || null,
-    aggregateColumn: aggregateFunction && aggregateFunction !== "COUNT" ? aggregateColumn || null : null,
-    groupByColumn: aggregateFunction ? groupByColumn || null : null,
-    filterColumn: filterColumn || null,
-    filterOperator: filterColumn ? filterOperator : null,
-    filterValue: filterColumn ? filterValue : null,
-    orderByColumn: orderByColumn || null,
-    orderByDirection: orderByColumn ? orderByDirection : null,
-    limit,
-  });
+  // The SQL panel regenerates as the form changes (debounced), so there is no
+  // separate "preview" step. The server still validates and builds the query.
+  useEffect(() => {
+    if (!table) return;
+    const handle = setTimeout(() => {
+      api
+        .previewQuery(spec)
+        .then((result) => {
+          setPreviewSql(result.sql);
+          setPreviewError(null);
+        })
+        .catch((e) => {
+          setPreviewSql(null);
+          setPreviewError((e as Error).message);
+        });
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [spec, table]);
 
-  const preview = async () => {
-    setPreviewError(null);
-    setPreviewSql(null);
-    try {
-      const result = await api.previewQuery(buildSpec());
-      setPreviewSql(result.sql);
-    } catch (e) {
-      setPreviewError((e as Error).message);
-    }
-  };
+  const effectiveIndexColumn = indexColumn || filterColumn;
 
   const predictImpact = async () => {
-    const effectiveIndexColumn = indexColumn || filterColumn;
     if (!effectiveIndexColumn) {
-      setPredictError("Pick a column to index (or set a filter column, which is used by default).");
+      setActionError("Pick a column to index, or set a filter column (it is used by default).");
       return;
     }
     setPredicting(true);
-    setPredictError(null);
+    setActionError(null);
     setPredictedImpact(null);
     try {
-      const result = await api.predictImpact(buildSpec(), effectiveIndexColumn);
-      setPredictedImpact(result);
+      setPredictedImpact(await api.predictImpact(spec, effectiveIndexColumn));
     } catch (e) {
-      setPredictError((e as Error).message);
+      setActionError((e as Error).message);
     } finally {
       setPredicting(false);
     }
   };
 
   const runExperiment = async () => {
-    const effectiveIndexColumn = indexColumn || filterColumn;
     if (!effectiveIndexColumn) {
-      setPreviewError("Pick a column to index (or set a filter column, which is used by default).");
+      setActionError("Pick a column to index, or set a filter column (it is used by default).");
       return;
     }
     setRunning(true);
-    setPreviewError(null);
+    setActionError(null);
     try {
-      const result = await api.runQueryBuilderExperiment(
-        buildSpec(), effectiveIndexColumn, repetitions, thresholdPercent / 100
-      );
+      const result = await api.runQueryBuilderExperiment(spec, effectiveIndexColumn, repetitions, thresholdPercent / 100);
       navigate(`/experiments/${result.experimentId}`);
     } catch (e) {
-      setPreviewError((e as Error).message);
+      setActionError((e as Error).message);
     } finally {
       setRunning(false);
     }
@@ -121,236 +128,247 @@ export function QueryBuilder() {
     setSelectColumns((prev) => (prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]));
   };
 
+  const sqlShown = table ? previewSql : null;
+
   return (
     <div>
-      <h1 className="accent-italic">Query Builder</h1>
-      <p className="subtitle">
-        Build a query against any table in the connected database -- your own imported dataset included -- by
-        picking columns and filters, not typing SQL. Every table and column name is checked against the
-        database's real schema before any SQL is generated.
-      </p>
+      <PageHeader
+        title="Query builder"
+        sub="Build a query against any table, import your own data, then measure what an index does to it. Table and column names are checked against the live schema before any SQL is generated."
+      />
 
       {error && <div className="error-banner">{error}</div>}
       {!error && tables === null && <div className="loading-line">Loading schema...</div>}
 
-      {tables && <ImportDataPanel onImported={handleImported} />}
-
       {tables && (
-        <div className="card">
-          <div className="form-row" style={{ flexWrap: "wrap" }}>
-            <div className="form-field">
-              <label htmlFor="table">Table</label>
-              <select
-                id="table"
-                value={table}
-                onChange={(e) => {
-                  setTable(e.target.value);
-                  setSelectColumns([]);
-                  setFilterColumn("");
-                  setOrderByColumn("");
-                  setAggregateColumn("");
-                  setGroupByColumn("");
-                  setIndexColumn("");
-                  setPreviewSql(null);
-                }}
-                style={{ background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "8px 10px", color: "var(--text-primary)", minWidth: 160 }}
-              >
-                <option value="">Select a table...</option>
-                {tables.map((t) => (
-                  <option key={t.tableName} value={t.tableName}>{t.tableName}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {table && (
-            <>
-              <div className="fade-section" style={{ marginTop: 20, animationDelay: "0ms" }}>
-                <div className="category-tag">Aggregate (optional)</div>
-                <div className="form-row" style={{ flexWrap: "wrap", marginTop: 8 }}>
-                  <div className="form-field">
-                    <label>Function</label>
-                    <select
-                      value={aggregateFunction}
-                      onChange={(e) => setAggregateFunction(e.target.value)}
-                      style={{ background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "8px 10px", color: "var(--text-primary)" }}
-                    >
-                      {AGGREGATES.map((a) => <option key={a} value={a}>{a || "None -- plain select"}</option>)}
-                    </select>
-                  </div>
-                  {aggregateFunction && aggregateFunction !== "COUNT" && (
-                    <div className="form-field">
-                      <label>On column</label>
-                      <select
-                        value={aggregateColumn}
-                        onChange={(e) => setAggregateColumn(e.target.value)}
-                        style={{ background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "8px 10px", color: "var(--text-primary)" }}
-                      >
-                        <option value="">Choose...</option>
-                        {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
-                      </select>
-                    </div>
-                  )}
-                  {aggregateFunction && (
-                    <div className="form-field">
-                      <label>Group by (optional)</label>
-                      <select
-                        value={groupByColumn}
-                        onChange={(e) => setGroupByColumn(e.target.value)}
-                        style={{ background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "8px 10px", color: "var(--text-primary)" }}
-                      >
-                        <option value="">None</option>
-                        {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
-                      </select>
-                    </div>
-                  )}
-                </div>
+        <div className="qb">
+          <section className="panel">
+            <div className="step">
+              <div className="step-head">
+                <span className="step-num">1</span>
+                <span className="step-title">Dataset</span>
               </div>
+              <div className="form-field" style={{ marginBottom: 16 }}>
+                <label htmlFor="table">Table</label>
+                <select
+                  id="table"
+                  value={table}
+                  onChange={(e) => {
+                    setTable(e.target.value);
+                    setSelectColumns([]);
+                    setFilterColumn("");
+                    setOrderByColumn("");
+                    setAggregateColumn("");
+                    setGroupByColumn("");
+                    setIndexColumn("");
+                    setPreviewSql(null);
+                    setPredictedImpact(null);
+                  }}
+                  style={{ minWidth: 220 }}
+                >
+                  <option value="">Select a table...</option>
+                  {tables.map((t) => (
+                    <option key={t.tableName} value={t.tableName}>{t.tableName}</option>
+                  ))}
+                </select>
+              </div>
+              <ImportDataPanel onImported={handleImported} />
+            </div>
 
-              {!aggregateFunction && (
-                <div className="fade-section" style={{ marginTop: 20, animationDelay: "60ms" }}>
-                  <div className="category-tag">Columns to select (none = all columns)</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-                    {columns.map((c) => (
-                      <label key={c.columnName} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "var(--text-secondary)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "4px 8px" }}>
-                        <input type="checkbox" checked={selectColumns.includes(c.columnName)} onChange={() => toggleSelectColumn(c.columnName)} />
-                        {c.columnName}
-                      </label>
-                    ))}
+            {table && (
+              <>
+                <div className="step fade-section">
+                  <div className="step-head">
+                    <span className="step-num">2</span>
+                    <span className="step-title">Select</span>
+                    <span className="step-opt">columns, or aggregate</span>
                   </div>
-                </div>
-              )}
-
-              <div className="fade-section" style={{ marginTop: 20, animationDelay: "120ms" }}>
-                <div className="category-tag">Filter (optional)</div>
-                <div className="form-row" style={{ flexWrap: "wrap", marginTop: 8 }}>
-                  <div className="form-field">
-                    <label>Column</label>
-                    <select value={filterColumn} onChange={(e) => setFilterColumn(e.target.value)} style={{ background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "8px 10px", color: "var(--text-primary)" }}>
-                      <option value="">None</option>
-                      {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
-                    </select>
-                  </div>
-                  {filterColumn && (
-                    <>
+                  <div className="form-row" style={{ marginBottom: aggregateFunction ? 0 : 14 }}>
+                    <div className="form-field">
+                      <label>Aggregate</label>
+                      <select value={aggregateFunction} onChange={(e) => setAggregateFunction(e.target.value)}>
+                        {AGGREGATES.map((a) => (
+                          <option key={a} value={a}>{a || "None"}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {aggregateFunction && aggregateFunction !== "COUNT" && (
                       <div className="form-field">
-                        <label>Operator</label>
-                        <select value={filterOperator} onChange={(e) => setFilterOperator(e.target.value)} style={{ background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "8px 10px", color: "var(--text-primary)" }}>
-                          {OPERATORS.map((op) => <option key={op} value={op}>{op}</option>)}
+                        <label>Of column</label>
+                        <select value={aggregateColumn} onChange={(e) => setAggregateColumn(e.target.value)}>
+                          <option value="">Choose...</option>
+                          {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
                         </select>
                       </div>
+                    )}
+                    {aggregateFunction && (
                       <div className="form-field">
-                        <label>Value</label>
-                        <input type="text" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} style={{ width: 140 }} />
+                        <label>Group by</label>
+                        <select value={groupByColumn} onChange={(e) => setGroupByColumn(e.target.value)}>
+                          <option value="">None</option>
+                          {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  {!aggregateFunction && (
+                    <>
+                      <div className="label" style={{ marginBottom: 8 }}>Columns (none selected means all)</div>
+                      <div className="chips">
+                        {columns.map((c) => (
+                          <label key={c.columnName} className="chip">
+                            <input type="checkbox" checked={selectColumns.includes(c.columnName)} onChange={() => toggleSelectColumn(c.columnName)} />
+                            {c.columnName}
+                          </label>
+                        ))}
                       </div>
                     </>
                   )}
                 </div>
-              </div>
 
-              <div className="fade-section" style={{ marginTop: 20, animationDelay: "180ms" }}>
-                <div className="category-tag">Order &amp; limit</div>
-                <div className="form-row" style={{ flexWrap: "wrap", marginTop: 8 }}>
-                  <div className="form-field">
-                    <label>Order by</label>
-                    <select value={orderByColumn} onChange={(e) => setOrderByColumn(e.target.value)} style={{ background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "8px 10px", color: "var(--text-primary)" }}>
-                      <option value="">None</option>
-                      {aggregateFunction && <option value="result">result (the aggregate)</option>}
+                <div className="step fade-section" style={{ animationDelay: "50ms" }}>
+                  <div className="step-head">
+                    <span className="step-num">3</span>
+                    <span className="step-title">Filter</span>
+                    <span className="step-opt">optional</span>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label>Column</label>
+                      <select value={filterColumn} onChange={(e) => setFilterColumn(e.target.value)}>
+                        <option value="">None</option>
+                        {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
+                      </select>
+                    </div>
+                    {filterColumn && (
+                      <>
+                        <div className="form-field">
+                          <label>Operator</label>
+                          <select value={filterOperator} onChange={(e) => setFilterOperator(e.target.value)}>
+                            {OPERATORS.map((op) => <option key={op} value={op}>{op}</option>)}
+                          </select>
+                        </div>
+                        <div className="form-field">
+                          <label>Value</label>
+                          <input type="text" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} style={{ width: 160 }} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="step fade-section" style={{ animationDelay: "100ms" }}>
+                  <div className="step-head">
+                    <span className="step-num">4</span>
+                    <span className="step-title">Order and limit</span>
+                    <span className="step-opt">optional</span>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label>Order by</label>
+                      <select value={orderByColumn} onChange={(e) => setOrderByColumn(e.target.value)}>
+                        <option value="">None</option>
+                        {aggregateFunction && <option value="result">result (the aggregate)</option>}
+                        {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
+                      </select>
+                    </div>
+                    {orderByColumn && (
+                      <div className="form-field">
+                        <label>Direction</label>
+                        <select value={orderByDirection} onChange={(e) => setOrderByDirection(e.target.value as "ASC" | "DESC")}>
+                          <option value="DESC">Descending</option>
+                          <option value="ASC">Ascending</option>
+                        </select>
+                      </div>
+                    )}
+                    <div className="form-field">
+                      <label>Limit</label>
+                      <input type="number" min={1} max={5000} value={limit} onChange={(e) => setLimit(Number(e.target.value))} style={{ width: 96 }} />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+
+          <aside className="qb-aside">
+            <section className="panel">
+              <div className="panel-head">
+                <h2 className="panel-title">Generated SQL</h2>
+              </div>
+              <div className="aside-section">
+                {sqlShown ? (
+                  <div className="sql-block">
+                    <pre className="code code-dark" style={{ paddingRight: 64 }}>{sqlShown}</pre>
+                    <CopyButton text={sqlShown} />
+                  </div>
+                ) : previewError && table ? (
+                  <div className="error-banner" style={{ marginBottom: 0 }}>{previewError}</div>
+                ) : (
+                  <p className="panel-note" style={{ margin: 0 }}>
+                    {table ? "Building..." : "Pick a table to see the query."}
+                  </p>
+                )}
+              </div>
+            </section>
+
+            {table && (
+              <section className="panel">
+                <div className="panel-head">
+                  <h2 className="panel-title">Index and run</h2>
+                </div>
+                <div className="aside-section">
+                  <div className="field">
+                    <label>Index column</label>
+                    <select value={indexColumn} onChange={(e) => setIndexColumn(e.target.value)}>
+                      <option value="">{filterColumn ? `Default: ${filterColumn}` : "Choose a column..."}</option>
                       {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
                     </select>
                   </div>
-                  {orderByColumn && (
-                    <div className="form-field">
-                      <label>Direction</label>
-                      <select value={orderByDirection} onChange={(e) => setOrderByDirection(e.target.value as "ASC" | "DESC")} style={{ background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "8px 10px", color: "var(--text-primary)" }}>
-                        <option value="DESC">DESC</option>
-                        <option value="ASC">ASC</option>
-                      </select>
+                  <div className="form-row" style={{ marginTop: 12, gap: 12 }}>
+                    <div className="field">
+                      <label>Repetitions</label>
+                      <input className="input input-num" type="number" min={1} max={20} value={repetitions} onChange={(e) => setRepetitions(Number(e.target.value))} />
+                    </div>
+                    <div className="field">
+                      <label>Threshold (%)</label>
+                      <input className="input input-num" type="number" min={1} max={100} value={thresholdPercent} onChange={(e) => setThresholdPercent(Number(e.target.value))} />
+                    </div>
+                  </div>
+
+                  <div className="aside-actions">
+                    <button className="btn btn-primary" onClick={runExperiment} disabled={running}>
+                      {running ? "Starting..." : "Run experiment"}
+                    </button>
+                    <button className="btn" onClick={predictImpact} disabled={predicting}>
+                      {predicting ? "Estimating..." : "Estimate impact first"}
+                    </button>
+                  </div>
+
+                  {actionError && <div className="error-banner" style={{ marginTop: 12, marginBottom: 0 }}>{actionError}</div>}
+
+                  {predictedImpact && (
+                    <div className="predict">
+                      <div className="label">
+                        Estimated change{" "}
+                        <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>
+                          ({predictedImpact.method === "historical" ? "from past runs" : "rule of thumb"})
+                        </span>
+                      </div>
+                      <div className={`predict-value change-value ${changeClassName(predictedImpact.predictedPercentageChange)}`}>
+                        <AnimatedNumber value={predictedImpact.predictedPercentageChange} format={formatChangeText} />
+                      </div>
+                      <p className="predict-note">
+                        {predictedImpact.note} Current plan: <span className="mono">{predictedImpact.currentScanType}</span>,
+                        selectivity <span className="mono">{(predictedImpact.selectivity * 100).toFixed(1)}%</span>. An
+                        estimate, not a measurement.
+                      </p>
                     </div>
                   )}
-                  <div className="form-field">
-                    <label>Limit</label>
-                    <input type="number" min={1} max={5000} value={limit} onChange={(e) => setLimit(Number(e.target.value))} style={{ width: 100 }} />
-                  </div>
                 </div>
-              </div>
-
-              <div className="fade-section" style={{ marginTop: 20, animationDelay: "240ms" }}>
-                <button className="btn" onClick={preview}>Preview SQL</button>
-              </div>
-
-              {previewSql && (
-                <div className="sql-block" style={{ marginTop: 12 }}>
-                  <div className="query-sql" style={{ background: "var(--bg)", padding: 12, borderRadius: 6, border: "1px solid var(--border-strong)" }}>
-                    {previewSql}
-                  </div>
-                  <CopyButton text={previewSql} />
-                </div>
-              )}
-              {previewError && <div className="error-banner" style={{ marginTop: 12 }}>{previewError}</div>}
-            </>
-          )}
-        </div>
-      )}
-
-      {table && (
-        <div className="card" style={{ marginTop: 24 }}>
-          <h2>Run as an experiment</h2>
-          <p style={{ color: "var(--text-secondary)", marginTop: 0, fontSize: 13 }}>
-            Runs the query with the index column absent, then adds an index and runs it again.
-          </p>
-          <div className="form-row" style={{ flexWrap: "wrap" }}>
-            <div className="form-field">
-              <label>Index column</label>
-              <select
-                value={indexColumn}
-                onChange={(e) => setIndexColumn(e.target.value)}
-                style={{ background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "8px 10px", color: "var(--text-primary)" }}
-              >
-                <option value="">{filterColumn ? `Default: ${filterColumn}` : "Choose a column..."}</option>
-                {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
-              </select>
-            </div>
-            <div className="form-field">
-              <label>Repetitions</label>
-              <input type="number" min={1} max={20} value={repetitions} onChange={(e) => setRepetitions(Number(e.target.value))} />
-            </div>
-            <div className="form-field">
-              <label>Threshold (%)</label>
-              <input type="number" min={1} max={100} value={thresholdPercent} onChange={(e) => setThresholdPercent(Number(e.target.value))} />
-            </div>
-            <button className="btn" onClick={predictImpact} disabled={predicting}>
-              {predicting ? "Predicting..." : "Predict Impact"}
-            </button>
-            <button className="btn btn-primary" onClick={runExperiment} disabled={running}>
-              {running ? "Starting..." : "Run Experiment"}
-            </button>
-          </div>
-
-          {predictError && <div className="error-banner" style={{ marginTop: 12 }}>{predictError}</div>}
-
-          {predictedImpact && (
-            <div className="card" style={{ marginTop: 16, background: "var(--bg)", animation: "fadeInUp var(--dur-base) var(--ease-out) both" }}>
-              <div className="category-tag">
-                Predicted impact
-                <span style={{ marginLeft: 6, fontSize: 10, textTransform: "none", letterSpacing: 0 }}>
-                  ({predictedImpact.method === "historical" ? "from past experiments" : "rule-of-thumb estimate"})
-                </span>
-              </div>
-              <div
-                className={`change-value ${changeClassName(predictedImpact.predictedPercentageChange)}`}
-                style={{ fontSize: 24, marginTop: 6 }}
-              >
-                <AnimatedNumber value={predictedImpact.predictedPercentageChange} format={formatChangeText} />
-              </div>
-              <p style={{ color: "var(--text-tertiary)", fontSize: 12, marginTop: 8, marginBottom: 0 }}>
-                {predictedImpact.note} Current plan: <span className="mono">{predictedImpact.currentScanType}</span>,
-                estimated selectivity <span className="mono">{(predictedImpact.selectivity * 100).toFixed(1)}%</span>.
-                This is an estimate to save time before committing to the real before/after run below -- not a
-                substitute for it.
-              </p>
-            </div>
-          )}
+              </section>
+            )}
+          </aside>
         </div>
       )}
     </div>
