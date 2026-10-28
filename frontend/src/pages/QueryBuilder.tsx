@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { PredictedImpact } from "../api/client";
-import type { IndexMethod, QuerySpec, TableInfo } from "../api/types";
+import type { QuerySpec, TableInfo } from "../api/types";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { CopyButton } from "../components/CopyButton";
 import { ImportDataPanel } from "../components/ImportDataPanel";
@@ -31,7 +31,6 @@ export function QueryBuilder() {
   const [orderByDirection, setOrderByDirection] = useState<"ASC" | "DESC">("DESC");
   const [limit, setLimit] = useState(100);
   const [indexColumns, setIndexColumns] = useState<string[]>([]);
-  const [indexMethod, setIndexMethod] = useState<IndexMethod>("btree");
   const [repetitions, setRepetitions] = useState(5);
   const [thresholdPercent, setThresholdPercent] = useState(20);
 
@@ -98,17 +97,7 @@ export function QueryBuilder() {
 
   const toggleIndexColumn = (col: string) => {
     setPredictedImpact(null);
-    setIndexColumns((prev) => {
-      if (prev.includes(col)) return prev.filter((c) => c !== col);
-      // A hash index covers one column, so picking another swaps it.
-      return indexMethod === "hash" ? [col] : [...prev, col];
-    });
-  };
-
-  const chooseMethod = (method: IndexMethod) => {
-    setIndexMethod(method);
-    setPredictedImpact(null);
-    if (method === "hash") setIndexColumns((prev) => prev.slice(0, 1));
+    setIndexColumns((prev) => (prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]));
   };
 
   const predictImpact = async () => {
@@ -120,7 +109,7 @@ export function QueryBuilder() {
     setActionError(null);
     setPredictedImpact(null);
     try {
-      setPredictedImpact(await api.predictImpact(spec, effectiveIndexColumns, indexMethod));
+      setPredictedImpact(await api.predictImpact(spec, effectiveIndexColumns));
     } catch (e) {
       setActionError((e as Error).message);
     } finally {
@@ -136,7 +125,7 @@ export function QueryBuilder() {
     setRunning(true);
     setActionError(null);
     try {
-      const result = await api.runQueryBuilderExperiment(spec, effectiveIndexColumns, indexMethod, repetitions, thresholdPercent / 100);
+      const result = await api.runQueryBuilderExperiment(spec, effectiveIndexColumns, repetitions, thresholdPercent / 100);
       navigate(`/experiments/${result.experimentId}`);
     } catch (e) {
       setActionError((e as Error).message);
@@ -348,20 +337,9 @@ export function QueryBuilder() {
                 </div>
                 <div className="aside-section">
                   <div className="field">
-                    <label>Index type</label>
-                    <div className="segmented" role="group" aria-label="Index type">
-                      <button type="button" className={indexMethod === "btree" ? "active" : ""} onClick={() => chooseMethod("btree")}>B-tree</button>
-                      <button type="button" className={indexMethod === "hash" ? "active" : ""} onClick={() => chooseMethod("hash")}>Hash</button>
-                    </div>
-                    <p className="field-hint">
-                      {indexMethod === "btree"
-                        ? "Handles equality, ranges and sorting. Pick several columns for a composite index."
-                        : "Equality lookups only, one column. It can't serve ranges or ORDER BY."}
-                    </p>
-                  </div>
-                  <div className="field" style={{ marginTop: 12 }}>
                     <label>
-                      {indexMethod === "btree" ? "Columns, in order" : "Column"}
+                      Index columns
+                      <span className="field-hint-inline"> (pick several for a composite index)</span>
                       {indexColumns.length === 0 && filterColumn && <span className="field-hint-inline"> (defaults to {filterColumn})</span>}
                     </label>
                     <div className="chips">

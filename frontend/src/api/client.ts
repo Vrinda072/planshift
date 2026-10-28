@@ -1,4 +1,4 @@
-import type { Experiment, IndexMethod, ExperimentQueryResult, QuerySpec, TableInfo, WorkloadQuery } from "./types";
+import type { Experiment, ExperimentQueryResult, QuerySpec, TableInfo, WorkloadQuery } from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
@@ -53,21 +53,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify(spec),
     }),
-  runQueryBuilderExperiment: (
-    spec: QuerySpec,
-    indexColumns: string[],
-    indexMethod: IndexMethod,
-    repetitions: number,
-    thresholdFraction: number
-  ) =>
+  runQueryBuilderExperiment: (spec: QuerySpec, indexColumns: string[], repetitions: number, thresholdFraction: number) =>
     request<Experiment>("/api/query-builder/run", {
       method: "POST",
-      body: JSON.stringify({ spec, indexColumns, indexMethod, repetitions, thresholdFraction }),
+      body: JSON.stringify({ spec, indexColumns, repetitions, thresholdFraction }),
     }),
-  predictImpact: (spec: QuerySpec, indexColumns: string[], indexMethod: IndexMethod) =>
+  predictImpact: (spec: QuerySpec, indexColumns: string[]) =>
     request<PredictedImpact>("/api/query-builder/predict-impact", {
       method: "POST",
-      body: JSON.stringify({ spec, indexColumns, indexMethod }),
+      body: JSON.stringify({ spec, indexColumns }),
     }),
   importCsv: async (file: File, tableName: string): Promise<ImportResult> => {
     const formData = new FormData();

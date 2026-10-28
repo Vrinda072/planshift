@@ -9,8 +9,4 @@ describe("indexLabel", () => {
   it("lists composite columns in order", () => {
     expect(indexLabel({ targetTable: "airbnb", targetColumn: "room_type,price" })).toBe("airbnb (room_type, price)");
   });
-
-  it("marks hash indexes", () => {
-    expect(indexLabel({ targetTable: "airbnb", targetColumn: "room_type", indexMethod: "hash" })).toBe("airbnb.room_type · hash");
-  });
 });

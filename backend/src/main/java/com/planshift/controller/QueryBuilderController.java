@@ -84,6 +84,6 @@ public class QueryBuilderController {
         if (columns.isEmpty()) {
             throw new IllegalArgumentException("Pick a column to index (or set a filter column to default to it)");
         }
-        return new IndexSpec(request.indexMethod(), columns);
+        return new IndexSpec(columns);
     }
 }

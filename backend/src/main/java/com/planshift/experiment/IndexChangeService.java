@@ -40,23 +40,23 @@ public class IndexChangeService {
     }
 
     public void addIndex(String table, String column) {
-        addIndex(table, IndexSpec.btree(column));
+        addIndex(table, IndexSpec.of(column));
     }
 
     public void dropIndex(String table, String column) {
-        dropIndex(table, IndexSpec.btree(column));
+        dropIndex(table, IndexSpec.of(column));
     }
 
     public boolean indexExists(String table, String column) {
         requireValid(table, column);
-        return indexExists(IndexNaming.managedName(table, List.of(column), "btree"));
+        return indexExists(IndexNaming.managedName(table, List.of(column)));
     }
 
     public void addIndex(String table, IndexSpec spec) {
         requireValid(table, spec);
         String columns = spec.columns().stream().map(this::quoteIdent).collect(Collectors.joining(", "));
         jdbc.execute("CREATE INDEX IF NOT EXISTS " + quoteIdent(nameOf(table, spec))
-                + " ON " + quoteIdent(table) + " USING " + spec.method() + " (" + columns + ")");
+                + " ON " + quoteIdent(table) + " (" + columns + ")");
     }
 
     public void dropIndex(String table, IndexSpec spec) {
@@ -66,8 +66,8 @@ public class IndexChangeService {
 
     /**
      * Clears the baseline: drops every PLANSHIFT-created index on this table that leads with the same column as
-     * the index under test, including ones left over from earlier experiments (a btree from a previous run would
-     * otherwise serve a hash or composite experiment's "before" and hide the real effect). Indexes the user
+     * the index under test, including ones left over from earlier experiments (a single-column index from a previous
+     * run would otherwise serve a composite experiment's "before" and hide the real effect). Indexes the user
      * created themselves are never touched.
      */
     public void dropManagedIndexesLeadingWith(String table, IndexSpec spec) {
@@ -93,7 +93,7 @@ public class IndexChangeService {
     }
 
     private String nameOf(String table, IndexSpec spec) {
-        return IndexNaming.managedName(table, spec.columns(), spec.method());
+        return IndexNaming.managedName(table, spec.columns());
     }
 
     private void requireValid(String table, IndexSpec spec) {

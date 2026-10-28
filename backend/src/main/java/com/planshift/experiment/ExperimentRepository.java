@@ -20,13 +20,13 @@ public class ExperimentRepository {
 
     public long insertExperiment(String experimentType, int datasetCustomers, int datasetOrders,
                                   long datasetSeed, int repetitions, double thresholdFraction,
-                                  String targetTable, String targetColumn, String indexMethod) {
+                                  String targetTable, String targetColumn) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
                     "INSERT INTO experiments (experiment_type, dataset_customers, dataset_orders, dataset_seed, "
-                            + "repetitions, threshold_fraction, status, current_phase, target_table, target_column, index_method) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "repetitions, threshold_fraction, status, current_phase, target_table, target_column) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     new String[]{"experiment_id"});
             ps.setString(1, experimentType);
             ps.setInt(2, datasetCustomers);
@@ -38,7 +38,6 @@ public class ExperimentRepository {
             ps.setString(8, ExperimentPhase.PENDING.name());
             ps.setString(9, targetTable);
             ps.setString(10, targetColumn);
-            ps.setString(11, indexMethod);
             return ps;
         }, keyHolder);
         return keyHolder.getKey().longValue();
@@ -143,7 +142,6 @@ public class ExperimentRepository {
                 rs.getLong("dataset_seed"),
                 rs.getString("target_table"),
                 rs.getString("target_column"),
-                rs.getString("index_method") != null ? rs.getString("index_method") : "btree",
                 rs.getInt("repetitions"),
                 rs.getDouble("threshold_fraction"),
                 ExperimentStatus.valueOf(rs.getString("status")),

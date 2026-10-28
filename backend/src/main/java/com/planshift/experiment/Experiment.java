@@ -12,7 +12,6 @@ public record Experiment(
         long datasetSeed,
         String targetTable,
         String targetColumn,
-        String indexMethod,
         int repetitions,
         double thresholdFraction,
         ExperimentStatus status,

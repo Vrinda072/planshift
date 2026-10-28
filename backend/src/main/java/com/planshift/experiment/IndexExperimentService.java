@@ -87,7 +87,7 @@ public class IndexExperimentService {
                             int repetitions, double thresholdFraction,
                             String indexTable, String indexColumn, String experimentType) {
         return startAsync(queries, params, repetitions, thresholdFraction, indexTable,
-                IndexSpec.btree(indexColumn), experimentType);
+                IndexSpec.of(indexColumn), experimentType);
     }
 
     public long startAsync(List<WorkloadQuery> queries, Map<String, Object> params,
@@ -97,7 +97,7 @@ public class IndexExperimentService {
         int datasetOrders = schemaService.tableExists("orders") ? countRows("orders") : 0;
         long experimentId = experimentRepository.insertExperiment(
                 experimentType, datasetCustomers, datasetOrders, DATASET_SEED, repetitions, thresholdFraction,
-                indexTable, index.columnsKey(), index.method());
+                indexTable, index.columnsKey());
 
         executorService.submit(() -> runBody(experimentId, queries, params, repetitions, thresholdFraction,
                 indexTable, index));

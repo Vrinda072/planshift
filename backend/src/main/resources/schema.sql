@@ -67,9 +67,8 @@ ALTER TABLE experiments ADD COLUMN IF NOT EXISTS current_phase VARCHAR(40);
 ALTER TABLE experiments ADD COLUMN IF NOT EXISTS target_table VARCHAR(100);
 ALTER TABLE experiments ADD COLUMN IF NOT EXISTS target_column VARCHAR(100);
 
--- target_column holds a comma-separated list for composite indexes; index_method is btree or hash.
+-- target_column holds a comma-separated list for composite indexes.
 ALTER TABLE experiments ALTER COLUMN target_column TYPE VARCHAR(300);
-ALTER TABLE experiments ADD COLUMN IF NOT EXISTS index_method VARCHAR(10) NOT NULL DEFAULT 'btree';
 
 CREATE TABLE IF NOT EXISTS experiment_query_results (
     id                   BIGSERIAL PRIMARY KEY,

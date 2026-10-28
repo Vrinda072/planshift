@@ -55,7 +55,6 @@ export interface Experiment {
   datasetSeed: number;
   targetTable: string | null;
   targetColumn: string | null;
-  indexMethod?: IndexMethod;
   repetitions: number;
   thresholdFraction: number;
   status: ExperimentStatus;
@@ -91,5 +90,3 @@ export interface QuerySpec {
   orderByDirection: string | null;
   limit: number | null;
 }
-
-export type IndexMethod = "btree" | "hash";

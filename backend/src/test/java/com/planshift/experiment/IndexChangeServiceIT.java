@@ -45,7 +45,7 @@ class IndexChangeServiceIT {
     @Test
     void createsAndDropsCompositeBtree() {
         probeTable();
-        IndexSpec spec = new IndexSpec("btree", List.of("a", "b"));
+        IndexSpec spec = new IndexSpec(List.of("a", "b"));
         indexChangeService.addIndex("idx_probe", spec);
         assertThat(definitions()).singleElement().asString().contains("USING btree (a, b)");
 
@@ -54,20 +54,9 @@ class IndexChangeServiceIT {
     }
 
     @Test
-    void createsHashIndexAlongsideBtreeOnTheSameColumn() {
-        probeTable();
-        indexChangeService.addIndex("idx_probe", IndexSpec.btree("c"));
-        indexChangeService.addIndex("idx_probe", new IndexSpec("hash", List.of("c")));
-        assertThat(definitions()).hasSize(2).anyMatch(d -> d.contains("USING hash (c)"));
-
-        indexChangeService.dropIndex("idx_probe", new IndexSpec("hash", List.of("c")));
-        assertThat(definitions()).singleElement().asString().contains("USING btree (c)");
-    }
-
-    @Test
     void managedCompositeIndexDoesNotCountAsAlreadyIndexed() {
         probeTable();
-        indexChangeService.addIndex("idx_probe", new IndexSpec("btree", List.of("a", "b")));
+        indexChangeService.addIndex("idx_probe", new IndexSpec(List.of("a", "b")));
         boolean aIndexed = schemaService.listTables().stream()
                 .filter(t -> t.tableName().equals("idx_probe")).findFirst().orElseThrow()
                 .columns().stream().filter(c -> c.columnName().equals("a")).findFirst().orElseThrow().indexed();
@@ -77,7 +66,7 @@ class IndexChangeServiceIT {
     @Test
     void rejectsUnknownColumnsBeforeRunningDdl() {
         probeTable();
-        assertThatThrownBy(() -> indexChangeService.addIndex("idx_probe", new IndexSpec("btree", List.of("a", "nope"))))
+        assertThatThrownBy(() -> indexChangeService.addIndex("idx_probe", new IndexSpec(List.of("a", "nope"))))
                 .hasMessageContaining("Unknown column");
     }
 
@@ -85,11 +74,11 @@ class IndexChangeServiceIT {
     void baselineClearsLeftoverManagedIndexesButKeepsUserOnes() {
         probeTable();
         jdbc.execute("CREATE INDEX my_own_idx ON idx_probe (a)");
-        indexChangeService.addIndex("idx_probe", IndexSpec.btree("a"));
-        indexChangeService.addIndex("idx_probe", new IndexSpec("btree", List.of("a", "b")));
-        indexChangeService.addIndex("idx_probe", IndexSpec.btree("c"));
+        indexChangeService.addIndex("idx_probe", IndexSpec.of("a"));
+        indexChangeService.addIndex("idx_probe", new IndexSpec(List.of("a", "b")));
+        indexChangeService.addIndex("idx_probe", IndexSpec.of("c"));
 
-        indexChangeService.dropManagedIndexesLeadingWith("idx_probe", new IndexSpec("hash", List.of("a")));
+        indexChangeService.dropManagedIndexesLeadingWith("idx_probe", new IndexSpec(List.of("a", "b")));
 
         assertThat(definitions()).hasSize(2)
                 .anyMatch(d -> d.contains("my_own_idx"))

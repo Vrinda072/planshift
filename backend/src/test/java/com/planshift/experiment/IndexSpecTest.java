@@ -11,35 +11,25 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class IndexSpecTest {
 
     @Test
-    void defaultsToBtree() {
-        IndexSpec spec = new IndexSpec(null, List.of("a", "b"));
-        assertThat(spec.method()).isEqualTo("btree");
-        assertThat(spec.columnsKey()).isEqualTo("a,b");
+    void joinsColumnsInOrder() {
+        assertThat(new IndexSpec(List.of("a", "b")).columnsKey()).isEqualTo("a,b");
     }
 
     @Test
-    void rejectsCompositeHash() {
-        assertThatThrownBy(() -> new IndexSpec("hash", List.of("a", "b")))
-                .hasMessageContaining("single column");
-    }
-
-    @Test
-    void rejectsUnknownMethodDuplicatesAndTooManyColumns() {
-        assertThatThrownBy(() -> new IndexSpec("gin", List.of("a"))).hasMessageContaining("Unsupported");
-        assertThatThrownBy(() -> new IndexSpec("btree", List.of("a", "a"))).hasMessageContaining("only once");
-        assertThatThrownBy(() -> new IndexSpec("btree", List.of("a", "b", "c", "d", "e"))).hasMessageContaining("at most");
-        assertThatThrownBy(() -> new IndexSpec("btree", List.of())).hasMessageContaining("at least one");
+    void rejectsDuplicatesEmptyAndTooManyColumns() {
+        assertThatThrownBy(() -> new IndexSpec(List.of("a", "a"))).hasMessageContaining("only once");
+        assertThatThrownBy(() -> new IndexSpec(List.of("a", "b", "c", "d", "e"))).hasMessageContaining("at most");
+        assertThatThrownBy(() -> new IndexSpec(List.of())).hasMessageContaining("at least one");
     }
 
     @Test
     void namesStayDistinctPerShapeAndWithinPostgresLimit() {
-        String plain = IndexNaming.managedName("t", List.of("a"), "btree");
-        assertThat(IndexNaming.managedName("t", List.of("a"), "hash")).isNotEqualTo(plain);
-        assertThat(IndexNaming.managedName("t", List.of("a", "b"), "btree")).isNotEqualTo(plain);
-        assertThat(IndexNaming.managedName("orders", List.of("customer_id"), "btree")).isEqualTo("idx_orders_customer_id");
+        String plain = IndexNaming.managedName("t", List.of("a"));
+        assertThat(IndexNaming.managedName("t", List.of("a", "b"))).isNotEqualTo(plain);
+        assertThat(IndexNaming.managedName("orders", List.of("customer_id"))).isEqualTo("idx_orders_customer_id");
 
-        String longA = IndexNaming.managedName("t", List.of("c".repeat(30), "d".repeat(30)), "btree");
-        String longB = IndexNaming.managedName("t", List.of("c".repeat(30), "e".repeat(30)), "btree");
+        String longA = IndexNaming.managedName("t", List.of("c".repeat(30), "d".repeat(30)));
+        String longB = IndexNaming.managedName("t", List.of("c".repeat(30), "e".repeat(30)));
         assertThat(longA).hasSizeLessThanOrEqualTo(63).isNotEqualTo(longB);
         assertThat(IndexNaming.isManaged(longA)).isTrue();
     }
