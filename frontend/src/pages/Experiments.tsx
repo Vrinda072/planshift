@@ -6,6 +6,7 @@ import { changeClassName, formatChangeText, formatDate } from "../format";
 import { PageHeader } from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { indexLabel } from "../lib/index";
 
 type SortKey = "id" | "ran" | "result";
 type StatusFilter = "ALL" | "COMPLETED" | "RUNNING" | "FAILED";
@@ -54,7 +55,7 @@ export function Experiments() {
     const filtered = (experiments ?? []).filter((e) => {
       if (status !== "ALL" && e.status !== status) return false;
       if (!q) return true;
-      const hay = `#${e.experimentId} ${e.targetTable ?? "orders"}.${e.targetColumn ?? "customer_id"} ${e.experimentType}`.toLowerCase();
+      const hay = `#${e.experimentId} ${indexLabel(e)} ${e.experimentType}`.toLowerCase();
       return hay.includes(q);
     });
     const value = (e: Experiment) =>
@@ -166,7 +167,7 @@ export function Experiments() {
                         <span className="cell-main">{exp.experimentType === "CUSTOM_QUERY" ? "Custom query" : "Built-in workload"}</span>
                       </Link>
                     </td>
-                    <td className="mono sub">{exp.targetTable ?? "orders"}.{exp.targetColumn ?? "customer_id"}</td>
+                    <td className="mono sub">{indexLabel(exp)}</td>
                     <td className="num tnum">{exp.repetitions}</td>
                     <td className="num tnum">{(exp.thresholdFraction * 100).toFixed(0)}%</td>
                     <td className="sub">{formatDate(exp.createdAt)}</td>

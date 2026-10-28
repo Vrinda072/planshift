@@ -5,9 +5,10 @@ import type { Experiment } from "../api/types";
 import { changeClassName, formatChangeText, formatMs } from "../format";
 import { PageHeader } from "../components/PageHeader";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { indexLabel } from "../lib/index";
 
 function label(e: Experiment) {
-  return `#${e.experimentId} (${e.targetTable ?? "orders"}.${e.targetColumn ?? "customer_id"})`;
+  return `#${e.experimentId} (${indexLabel(e)})`;
 }
 
 export function Compare() {

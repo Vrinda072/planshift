@@ -1,4 +1,5 @@
 import type { Experiment } from "../api/types";
+import { indexLabel } from "./index";
 
 /**
  * The one-sentence finding for a completed run. Every figure is computed from
@@ -11,7 +12,7 @@ export function verdict(experiment: Experiment): string | null {
   }
   const improved = results.filter((r) => r.status === "IMPROVED").length;
   const regressed = results.filter((r) => r.status === "REGRESSED").length;
-  const target = `${experiment.targetTable ?? "orders"}.${experiment.targetColumn ?? "customer_id"}`;
+  const target = indexLabel(experiment);
   const overall = experiment.overallPercentageChange;
   const noun = results.length === 1 ? "query" : "queries";
   const threshold = (experiment.thresholdFraction * 100).toFixed(0);

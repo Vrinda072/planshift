@@ -5,6 +5,9 @@ import com.planshift.schema.IndexNaming;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Adds/removes an index on a given table.column -- the one supported
  * "database change" in this MVP. Table and column names are always
@@ -37,25 +40,66 @@ public class IndexChangeService {
     }
 
     public void addIndex(String table, String column) {
-        requireValid(table, column);
-        jdbc.execute("CREATE INDEX IF NOT EXISTS " + quoteIdent(indexName(table, column))
-                + " ON " + quoteIdent(table) + " (" + quoteIdent(column) + ")");
+        addIndex(table, IndexSpec.btree(column));
     }
 
     public void dropIndex(String table, String column) {
-        requireValid(table, column);
-        jdbc.execute("DROP INDEX IF EXISTS " + quoteIdent(indexName(table, column)));
+        dropIndex(table, IndexSpec.btree(column));
     }
 
     public boolean indexExists(String table, String column) {
         requireValid(table, column);
-        Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM pg_indexes WHERE indexname = ?", Integer.class, indexName(table, column));
+        return indexExists(IndexNaming.managedName(table, List.of(column), "btree"));
+    }
+
+    public void addIndex(String table, IndexSpec spec) {
+        requireValid(table, spec);
+        String columns = spec.columns().stream().map(this::quoteIdent).collect(Collectors.joining(", "));
+        jdbc.execute("CREATE INDEX IF NOT EXISTS " + quoteIdent(nameOf(table, spec))
+                + " ON " + quoteIdent(table) + " USING " + spec.method() + " (" + columns + ")");
+    }
+
+    public void dropIndex(String table, IndexSpec spec) {
+        requireValid(table, spec);
+        jdbc.execute("DROP INDEX IF EXISTS " + quoteIdent(nameOf(table, spec)));
+    }
+
+    /**
+     * Clears the baseline: drops every PLANSHIFT-created index on this table that leads with the same column as
+     * the index under test, including ones left over from earlier experiments (a btree from a previous run would
+     * otherwise serve a hash or composite experiment's "before" and hide the real effect). Indexes the user
+     * created themselves are never touched.
+     */
+    public void dropManagedIndexesLeadingWith(String table, IndexSpec spec) {
+        requireValid(table, spec);
+        List<String> names = jdbc.queryForList(
+                "SELECT ic.relname FROM pg_index i "
+                        + "JOIN pg_class c ON c.oid = i.indrelid "
+                        + "JOIN pg_class ic ON ic.oid = i.indexrelid "
+                        + "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                        + "JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = i.indkey[0] "
+                        + "WHERE n.nspname = 'public' AND c.relname = ? AND a.attname = ?",
+                String.class, table, spec.columns().get(0));
+        for (String name : names) {
+            if (IndexNaming.isManaged(name)) {
+                jdbc.execute("DROP INDEX IF EXISTS " + quoteIdent(name));
+            }
+        }
+    }
+
+    private boolean indexExists(String name) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM pg_indexes WHERE indexname = ?", Integer.class, name);
         return count != null && count > 0;
     }
 
-    private String indexName(String table, String column) {
-        return IndexNaming.managedName(table, column);
+    private String nameOf(String table, IndexSpec spec) {
+        return IndexNaming.managedName(table, spec.columns(), spec.method());
+    }
+
+    private void requireValid(String table, IndexSpec spec) {
+        for (String column : spec.columns()) {
+            requireValid(table, column);
+        }
     }
 
     private void requireValid(String table, String column) {

@@ -3,6 +3,7 @@ package com.planshift.controller;
 import com.planshift.experiment.Experiment;
 import com.planshift.experiment.ExperimentRepository;
 import com.planshift.experiment.IndexExperimentService;
+import com.planshift.experiment.IndexSpec;
 import com.planshift.experiment.RegressionDetector;
 import com.planshift.impact.ImpactPredictionService;
 import com.planshift.impact.PredictedImpact;
@@ -52,11 +53,9 @@ public class QueryBuilderController {
      */
     @PostMapping("/api/query-builder/predict-impact")
     public PredictedImpact predictImpact(@RequestBody QueryBuilderRunRequest request) {
-        String indexColumn = request.indexColumn() != null ? request.indexColumn() : request.spec().filterColumn();
-        if (indexColumn == null) {
-            throw new IllegalArgumentException("indexColumn is required (or set a filter column to default to it)");
-        }
-        return impactPredictionService.predict(request.spec(), indexColumn);
+        IndexSpec index = indexOf(request);
+        // The estimate only looks at the leading column, which is what decides whether the planner can use the index.
+        return impactPredictionService.predict(request.spec(), index.columns().get(0));
     }
 
     /** Builds the query, then runs a real baseline-vs-candidate index experiment against it. */
@@ -65,18 +64,26 @@ public class QueryBuilderController {
     public Experiment run(@RequestBody QueryBuilderRunRequest request) {
         BuiltQuery built = queryBuilderService.build(request.spec());
 
-        String indexColumn = request.indexColumn() != null ? request.indexColumn() : request.spec().filterColumn();
-        if (indexColumn == null) {
-            throw new IllegalArgumentException("indexColumn is required (or set a filter column to default to it)");
-        }
+        IndexSpec index = indexOf(request);
 
         int repetitions = request.repetitions() != null ? request.repetitions() : DEFAULT_REPETITIONS;
         double threshold = request.thresholdFraction() != null
                 ? request.thresholdFraction() : RegressionDetector.DEFAULT_THRESHOLD_FRACTION;
 
         long id = experimentService.startAsync(List.of(built.query()), built.params(), repetitions, threshold,
-                request.spec().table(), indexColumn, "CUSTOM_QUERY");
+                request.spec().table(), index, "CUSTOM_QUERY");
         return experimentRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Experiment vanished right after creation: " + id));
+    }
+
+    private static IndexSpec indexOf(QueryBuilderRunRequest request) {
+        List<String> columns = request.indexColumns() != null && !request.indexColumns().isEmpty()
+                ? request.indexColumns()
+                : request.indexColumn() != null ? List.of(request.indexColumn())
+                : request.spec().filterColumn() != null ? List.of(request.spec().filterColumn()) : List.of();
+        if (columns.isEmpty()) {
+            throw new IllegalArgumentException("Pick a column to index (or set a filter column to default to it)");
+        }
+        return new IndexSpec(request.indexMethod(), columns);
     }
 }

@@ -44,7 +44,7 @@ public class SchemaService {
                 rs -> {
                     String table = rs.getString("table_name");
                     String column = rs.getString("column_name");
-                    if (!IndexNaming.managedName(table, column).equals(rs.getString("index_name"))) {
+                    if (!IndexNaming.isManaged(rs.getString("index_name"))) {
                         indexedColumns.add(table + "." + column);
                     }
                 });

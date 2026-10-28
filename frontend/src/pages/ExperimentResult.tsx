@@ -13,12 +13,13 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useExperimentPolling } from "../hooks/useExperimentPolling";
 import { exportCsv, exportJson } from "../lib/export";
 import { strategyChange } from "../lib/plan";
+import { indexLabel } from "../lib/index";
 import { belowNoiseFloor } from "../lib/noise";
 import { verdict } from "../lib/verdict";
 import { IconDownload } from "../components/Icons";
 
 function MetaRow({ experiment }: { experiment: Experiment }) {
-  const target = `${experiment.targetTable ?? "orders"}.${experiment.targetColumn ?? "customer_id"}`;
+  const target = indexLabel(experiment);
   return (
     <div className="meta-row">
       <span className="meta-item">

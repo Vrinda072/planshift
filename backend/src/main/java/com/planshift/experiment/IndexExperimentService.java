@@ -86,14 +86,21 @@ public class IndexExperimentService {
     public long startAsync(List<WorkloadQuery> queries, Map<String, Object> params,
                             int repetitions, double thresholdFraction,
                             String indexTable, String indexColumn, String experimentType) {
+        return startAsync(queries, params, repetitions, thresholdFraction, indexTable,
+                IndexSpec.btree(indexColumn), experimentType);
+    }
+
+    public long startAsync(List<WorkloadQuery> queries, Map<String, Object> params,
+                            int repetitions, double thresholdFraction,
+                            String indexTable, IndexSpec index, String experimentType) {
         int datasetCustomers = schemaService.tableExists("customers") ? countRows("customers") : 0;
         int datasetOrders = schemaService.tableExists("orders") ? countRows("orders") : 0;
         long experimentId = experimentRepository.insertExperiment(
                 experimentType, datasetCustomers, datasetOrders, DATASET_SEED, repetitions, thresholdFraction,
-                indexTable, indexColumn);
+                indexTable, index.columnsKey(), index.method());
 
         executorService.submit(() -> runBody(experimentId, queries, params, repetitions, thresholdFraction,
-                indexTable, indexColumn));
+                indexTable, index));
         return experimentId;
     }
 
@@ -121,10 +128,10 @@ public class IndexExperimentService {
     }
 
     private void runBody(long experimentId, List<WorkloadQuery> queries, Map<String, Object> params,
-                          int repetitions, double thresholdFraction, String indexTable, String indexColumn) {
+                          int repetitions, double thresholdFraction, String indexTable, IndexSpec index) {
         try {
             experimentRepository.updatePhase(experimentId, ExperimentPhase.DROPPING_INDEX);
-            indexChangeService.dropIndex(indexTable, indexColumn);
+            indexChangeService.dropManagedIndexesLeadingWith(indexTable, index);
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.WARMING_UP_BASELINE);
             warmUp(queries, params);
@@ -138,7 +145,7 @@ public class IndexExperimentService {
                     .toList();
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.ADDING_INDEX);
-            indexChangeService.addIndex(indexTable, indexColumn);
+            indexChangeService.addIndex(indexTable, index);
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.WARMING_UP_CANDIDATE);
             warmUp(queries, params);

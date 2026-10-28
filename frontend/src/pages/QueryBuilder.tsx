@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { PredictedImpact } from "../api/client";
-import type { QuerySpec, TableInfo } from "../api/types";
+import type { IndexMethod, QuerySpec, TableInfo } from "../api/types";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { CopyButton } from "../components/CopyButton";
 import { ImportDataPanel } from "../components/ImportDataPanel";
@@ -30,7 +30,8 @@ export function QueryBuilder() {
   const [orderByColumn, setOrderByColumn] = useState("");
   const [orderByDirection, setOrderByDirection] = useState<"ASC" | "DESC">("DESC");
   const [limit, setLimit] = useState(100);
-  const [indexColumn, setIndexColumn] = useState("");
+  const [indexColumns, setIndexColumns] = useState<string[]>([]);
+  const [indexMethod, setIndexMethod] = useState<IndexMethod>("btree");
   const [repetitions, setRepetitions] = useState(5);
   const [thresholdPercent, setThresholdPercent] = useState(20);
 
@@ -92,11 +93,26 @@ export function QueryBuilder() {
     return () => clearTimeout(handle);
   }, [spec, table]);
 
-  const effectiveIndexColumn = indexColumn || filterColumn;
-  const alreadyIndexed = columns.some((c) => c.columnName === effectiveIndexColumn && c.indexed);
+  const effectiveIndexColumns = indexColumns.length > 0 ? indexColumns : filterColumn ? [filterColumn] : [];
+  const alreadyIndexed = columns.some((c) => c.columnName === effectiveIndexColumns[0] && c.indexed);
+
+  const toggleIndexColumn = (col: string) => {
+    setPredictedImpact(null);
+    setIndexColumns((prev) => {
+      if (prev.includes(col)) return prev.filter((c) => c !== col);
+      // A hash index covers one column, so picking another swaps it.
+      return indexMethod === "hash" ? [col] : [...prev, col];
+    });
+  };
+
+  const chooseMethod = (method: IndexMethod) => {
+    setIndexMethod(method);
+    setPredictedImpact(null);
+    if (method === "hash") setIndexColumns((prev) => prev.slice(0, 1));
+  };
 
   const predictImpact = async () => {
-    if (!effectiveIndexColumn) {
+    if (effectiveIndexColumns.length === 0) {
       setActionError("Pick a column to index, or set a filter column (it is used by default).");
       return;
     }
@@ -104,7 +120,7 @@ export function QueryBuilder() {
     setActionError(null);
     setPredictedImpact(null);
     try {
-      setPredictedImpact(await api.predictImpact(spec, effectiveIndexColumn));
+      setPredictedImpact(await api.predictImpact(spec, effectiveIndexColumns, indexMethod));
     } catch (e) {
       setActionError((e as Error).message);
     } finally {
@@ -113,14 +129,14 @@ export function QueryBuilder() {
   };
 
   const runExperiment = async () => {
-    if (!effectiveIndexColumn) {
+    if (effectiveIndexColumns.length === 0) {
       setActionError("Pick a column to index, or set a filter column (it is used by default).");
       return;
     }
     setRunning(true);
     setActionError(null);
     try {
-      const result = await api.runQueryBuilderExperiment(spec, effectiveIndexColumn, repetitions, thresholdPercent / 100);
+      const result = await api.runQueryBuilderExperiment(spec, effectiveIndexColumns, indexMethod, repetitions, thresholdPercent / 100);
       navigate(`/experiments/${result.experimentId}`);
     } catch (e) {
       setActionError((e as Error).message);
@@ -164,7 +180,7 @@ export function QueryBuilder() {
                     setOrderByColumn("");
                     setAggregateColumn("");
                     setGroupByColumn("");
-                    setIndexColumn("");
+                    setIndexColumns([]);
                     setPreviewSql(null);
                     setPredictedImpact(null);
                   }}
@@ -332,15 +348,45 @@ export function QueryBuilder() {
                 </div>
                 <div className="aside-section">
                   <div className="field">
-                    <label>Index column</label>
-                    <select value={indexColumn} onChange={(e) => setIndexColumn(e.target.value)}>
-                      <option value="">{filterColumn ? `Default: ${filterColumn}` : "Choose a column..."}</option>
-                      {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}{c.indexed ? " (already indexed)" : ""}</option>)}
-                    </select>
+                    <label>Index type</label>
+                    <div className="segmented" role="group" aria-label="Index type">
+                      <button type="button" className={indexMethod === "btree" ? "active" : ""} onClick={() => chooseMethod("btree")}>B-tree</button>
+                      <button type="button" className={indexMethod === "hash" ? "active" : ""} onClick={() => chooseMethod("hash")}>Hash</button>
+                    </div>
+                    <p className="field-hint">
+                      {indexMethod === "btree"
+                        ? "Handles equality, ranges and sorting. Pick several columns for a composite index."
+                        : "Equality lookups only, one column. It can't serve ranges or ORDER BY."}
+                    </p>
+                  </div>
+                  <div className="field" style={{ marginTop: 12 }}>
+                    <label>
+                      {indexMethod === "btree" ? "Columns, in order" : "Column"}
+                      {indexColumns.length === 0 && filterColumn && <span className="field-hint-inline"> (defaults to {filterColumn})</span>}
+                    </label>
+                    <div className="chips">
+                      {columns.map((c) => {
+                        const position = indexColumns.indexOf(c.columnName);
+                        return (
+                          <label key={c.columnName} className="chip">
+                            <input type="checkbox" checked={position >= 0} onChange={() => toggleIndexColumn(c.columnName)} />
+                            {position >= 0 && indexColumns.length > 1 && <span className="chip-pos">{position + 1}</span>}
+                            {c.columnName}
+                            {c.indexed && <span className="chip-idx" title="Already indexed">idx</span>}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {indexColumns.length > 1 && (
+                      <p className="field-hint">
+                        Column order matters: the planner can use this index for filters on <span className="mono">{indexColumns[0]}</span>,
+                        or on it together with the columns after it, but not on the later columns alone.
+                      </p>
+                    )}
                   </div>
                   {alreadyIndexed && (
                     <p className="inline-warning">
-                      <span className="mono">{effectiveIndexColumn}</span> already has an index that PLANSHIFT won't
+                      <span className="mono">{effectiveIndexColumns[0]}</span> already has an index that PLANSHIFT won't
                       drop, so the baseline will use it too. Expect little or no change.
                     </p>
                   )}

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Experiment } from "../api/types";
 import { formatChangeText } from "../format";
+import { indexLabel } from "../lib/index";
 
 interface Item {
   id: string;
@@ -53,7 +54,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const recent: Item[] = experiments.slice(0, 8).map((e) => ({
       id: `e-${e.experimentId}`,
       group: "Experiments",
-      label: `#${e.experimentId}  ${e.targetTable ?? "orders"}.${e.targetColumn ?? "customer_id"}`,
+      label: `#${e.experimentId}  ${indexLabel(e)}`,
       hint:
         e.status === "COMPLETED" && e.overallPercentageChange !== null
           ? formatChangeText(e.overallPercentageChange)

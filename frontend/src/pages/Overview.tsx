@@ -9,6 +9,7 @@ import { PageHeader } from "../components/PageHeader";
 import { RunBars } from "../components/RunBars";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { indexLabel } from "../lib/index";
 import { verdict } from "../lib/verdict";
 
 const TREND_RUNS = 12;
@@ -78,7 +79,7 @@ export function Overview() {
             <h2 className="panel-title">
               Latest run
               <span className="panel-meta" style={{ marginLeft: 8, fontWeight: 400 }}>
-                #{latest.experimentId} on <span className="mono">{latest.targetTable ?? "orders"}.{latest.targetColumn ?? "customer_id"}</span>, {formatDate(latest.createdAt)}
+                #{latest.experimentId} on <span className="mono">{indexLabel(latest)}</span>, {formatDate(latest.createdAt)}
               </span>
             </h2>
             <span className="panel-meta">
@@ -191,7 +192,7 @@ export function Overview() {
                       <span className="row-id">#{exp.experimentId}</span>{" "}
                       <span className="cell-main">{exp.experimentType === "CUSTOM_QUERY" ? "Custom query" : "Built-in workload"}</span>
                     </td>
-                    <td className="mono sub">{exp.targetTable ?? "orders"}.{exp.targetColumn ?? "customer_id"}</td>
+                    <td className="mono sub">{indexLabel(exp)}</td>
                     <td className="sub">{formatDate(exp.createdAt)}</td>
                     <td>
                       <span className={`status ${exp.status.toLowerCase()}`}>
