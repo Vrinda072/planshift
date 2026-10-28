@@ -1151,3 +1151,90 @@ input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--ink); cu
   .compare-side + .compare-side { border-left: 0; border-top: 1px solid var(--line); }
   .toolbar { flex-wrap: wrap; }
 }
+
+/* ---------- gradient accents ---------- */
+
+:root {
+  --grad: linear-gradient(115deg, #0070f3 0%, #7928ca 52%, #ff0080 100%);
+  --grad-good: linear-gradient(115deg, #0b7a3e 0%, #12a594 100%);
+  --grad-bad: linear-gradient(115deg, #cf1322 0%, #e5560a 100%);
+}
+
+/* soft aurora behind the content, fading out by the fold */
+.content { position: relative; isolation: isolate; }
+.content::before {
+  content: "";
+  position: absolute;
+  inset: -60px -40px auto -40px;
+  height: 340px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(520px 220px at 12% 0%, rgba(0, 112, 243, 0.16), transparent 70%),
+    radial-gradient(480px 220px at 55% -10%, rgba(121, 40, 202, 0.14), transparent 70%),
+    radial-gradient(440px 200px at 95% 5%, rgba(255, 0, 128, 0.11), transparent 70%);
+  -webkit-mask-image: linear-gradient(#000 40%, transparent);
+  mask-image: linear-gradient(#000 40%, transparent);
+}
+
+.page-head h1 {
+  background: linear-gradient(100deg, var(--ink) 55%, #5b3bd1);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* primary button: black with a gradient edge that lights up on hover */
+.btn-primary {
+  position: relative;
+  border-color: transparent;
+  background: linear-gradient(var(--ink), var(--ink)) padding-box, var(--grad) border-box;
+  border: 1px solid transparent;
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(#1c1c1c, #1c1c1c) padding-box, var(--grad) border-box;
+  box-shadow: 0 6px 18px -6px rgba(121, 40, 202, 0.55);
+  transform: translateY(-1px);
+}
+
+.nav-link.active {
+  background: linear-gradient(90deg, rgba(0, 112, 243, 0.09), rgba(121, 40, 202, 0.06));
+  box-shadow: inset 2px 0 0 #5b3bd1;
+}
+
+/* the headline number carries the gradient; direction decides the hue */
+.latest-value, .strip-value { background-clip: text; -webkit-background-clip: text; }
+.latest-value.change-negative { background-image: var(--grad-good); color: transparent; }
+.latest-value.change-positive { background-image: var(--grad-bad); color: transparent; }
+.strip-value.good { background-image: var(--grad-good); color: transparent; }
+.strip-value.bad { background-image: var(--grad-bad); color: transparent; }
+
+.runbar-fill.down { background: linear-gradient(#12a594, var(--good)); }
+.runbar-fill.up { background: linear-gradient(var(--bad), #e5560a); }
+
+.dumbbell-link.good { background: var(--grad-good); opacity: 0.6; }
+.dumbbell-link.bad { background: var(--grad-bad); opacity: 0.6; }
+
+.panel { transition: box-shadow 200ms ease, border-color 200ms ease; }
+.panel:hover { border-color: var(--line-strong); box-shadow: 0 10px 30px -18px rgba(60, 30, 140, 0.25); }
+
+.palette { position: relative; }
+.palette::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--grad);
+}
+
+.progress-step.done .progress-step-dot { background: var(--grad-good); }
+.progress-step.active .progress-step-dot { background: var(--grad); }
+
+.brand span, .brand-name { letter-spacing: -0.03em; }
+
+:focus-visible { outline: 2px solid #7928ca; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary:hover:not(:disabled) { transform: none; }
+}

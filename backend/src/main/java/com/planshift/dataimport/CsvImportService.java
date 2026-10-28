@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.sql.DataSource;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -29,8 +28,8 @@ import java.util.regex.Pattern;
  * COPY's CSV parser is more correct than anything worth hand-rolling here
  * for quoted fields, embedded commas, etc.
  *
- * Reads the whole file into memory. Fine for typical portfolio/demo-sized
- * CSVs (tens of MB); a production version would stream instead.
+ * The upload is spooled to a temp file and read line by line twice (type
+ * inference, then COPY), so memory use doesn't grow with file size.
  */
 @Service
 public class CsvImportService {
@@ -54,31 +53,34 @@ public class CsvImportService {
             throw new IllegalArgumentException("'" + tableName + "' is a built-in PLANSHIFT table name and can't be overwritten by an import.");
         }
 
-        byte[] content = file.getBytes();
-        List<String> lines = splitLines(new String(content, StandardCharsets.UTF_8));
-        if (lines.isEmpty()) {
-            throw new IllegalArgumentException("CSV file is empty");
-        }
+        java.nio.file.Path temp = java.nio.file.Files.createTempFile("planshift-import-", ".csv");
+        try {
+            file.transferTo(temp);
 
-        List<String> rawHeaders = splitCsvLine(lines.get(0));
-        List<String> columnNames = sanitizeColumnNames(rawHeaders);
-        List<List<String>> dataRows = new ArrayList<>();
-        for (int i = 1; i < lines.size(); i++) {
-            if (lines.get(i).isBlank()) {
-                continue;
+            List<String> columnNames;
+            List<String> columnTypes;
+            try (java.io.BufferedReader reader = java.nio.file.Files.newBufferedReader(temp, StandardCharsets.UTF_8)) {
+                String header = reader.readLine();
+                if (header == null || header.isBlank()) {
+                    throw new IllegalArgumentException("CSV file is empty");
+                }
+                columnNames = sanitizeColumnNames(splitCsvLine(stripBom(header)));
+                columnTypes = inferColumnTypes(columnNames.size(), reader);
             }
-            dataRows.add(splitCsvLine(lines.get(i)));
+
+            createTable(tableName, columnNames, columnTypes);
+            loadViaCopy(tableName, temp);
+
+            int rowCount = jdbc.queryForObject("SELECT COUNT(*) FROM " + quoteIdent(tableName), Integer.class);
+            log.info("Imported CSV into table {}: {} columns, {} rows", tableName, columnNames.size(), rowCount);
+            return new ImportResult(tableName, columnNames, rowCount);
+        } finally {
+            java.nio.file.Files.deleteIfExists(temp);
         }
+    }
 
-        List<String> columnTypes = inferColumnTypes(columnNames.size(), dataRows);
-
-        createTable(tableName, columnNames, columnTypes);
-        loadViaCopy(tableName, content);
-
-        int rowCount = jdbc.queryForObject("SELECT COUNT(*) FROM " + quoteIdent(tableName), Integer.class);
-        log.info("Imported CSV into table {}: {} columns, {} rows", tableName, columnNames.size(), rowCount);
-
-        return new ImportResult(tableName, columnNames, rowCount);
+    private static String stripBom(String line) {
+        return line.startsWith("\uFEFF") ? line.substring(1) : line;
     }
 
     private void createTable(String tableName, List<String> columnNames, List<String> columnTypes) {
@@ -94,25 +96,31 @@ public class CsvImportService {
         jdbc.execute(ddl.toString());
     }
 
-    private void loadViaCopy(String tableName, byte[] csvContent) {
-        try (Connection connection = dataSource.getConnection()) {
+    private void loadViaCopy(String tableName, java.nio.file.Path csv) {
+        try (Connection connection = dataSource.getConnection();
+             java.io.InputStream in = java.nio.file.Files.newInputStream(csv)) {
             PGConnection pgConnection = connection.unwrap(PGConnection.class);
             CopyManager copyManager = pgConnection.getCopyAPI();
             copyManager.copyIn(
                     "COPY " + quoteIdent(tableName) + " FROM STDIN WITH (FORMAT csv, HEADER true)",
-                    new ByteArrayInputStream(csvContent));
+                    in);
         } catch (SQLException | IOException e) {
             throw new IllegalArgumentException("Failed to load CSV data: " + e.getMessage(), e);
         }
     }
 
-    private List<String> inferColumnTypes(int columnCount, List<List<String>> rows) {
+    private List<String> inferColumnTypes(int columnCount, java.io.BufferedReader reader) throws IOException {
         boolean[] couldBeInteger = new boolean[columnCount];
         boolean[] couldBeNumeric = new boolean[columnCount];
         java.util.Arrays.fill(couldBeInteger, true);
         java.util.Arrays.fill(couldBeNumeric, true);
 
-        for (List<String> row : rows) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (line.isBlank()) {
+                continue;
+            }
+            List<String> row = splitCsvLine(line);
             for (int c = 0; c < columnCount; c++) {
                 String value = c < row.size() ? row.get(c) : "";
                 if (value.isBlank()) {
@@ -182,17 +190,6 @@ public class CsvImportService {
             result.add(candidate);
         }
         return result;
-    }
-
-    private List<String> splitLines(String text) {
-        List<String> lines = new ArrayList<>();
-        for (String line : text.split("\n", -1)) {
-            lines.add(line.endsWith("\r") ? line.substring(0, line.length() - 1) : line);
-        }
-        while (!lines.isEmpty() && lines.get(lines.size() - 1).isBlank()) {
-            lines.remove(lines.size() - 1);
-        }
-        return lines;
     }
 
     /** Minimal RFC4180-style split: handles quoted fields, embedded commas, and "" as an escaped quote. */

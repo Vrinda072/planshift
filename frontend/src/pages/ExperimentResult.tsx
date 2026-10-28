@@ -13,6 +13,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useExperimentPolling } from "../hooks/useExperimentPolling";
 import { exportCsv, exportJson } from "../lib/export";
 import { strategyChange } from "../lib/plan";
+import { belowNoiseFloor } from "../lib/noise";
 import { verdict } from "../lib/verdict";
 import { IconDownload } from "../components/Icons";
 
@@ -145,6 +146,13 @@ export function ExperimentResult() {
       >
         <MetaRow experiment={experiment} />
       </PageHeader>
+
+      {belowNoiseFloor(results) && (
+        <div className="inline-warning" style={{ marginBottom: 16 }}>
+          Every query here ran in under 1 ms, which is mostly timer jitter. Try a larger table before reading much into
+          the percentages.
+        </div>
+      )}
 
       <div className="strip">
         <div className="strip-cell">
