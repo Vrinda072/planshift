@@ -4,18 +4,16 @@ import { api } from "../api/client";
 import type { Experiment } from "../api/types";
 import { changeClassName, formatChangeText, formatDate, formatMs } from "../format";
 import { AnimatedNumber } from "../components/AnimatedNumber";
+import { Hero } from "../components/Hero";
 import { ExperimentProgress } from "../components/ExperimentProgress";
-import { InfoTooltip } from "../components/InfoTooltip";
 import { PageHeader } from "../components/PageHeader";
 import { PlanTreeCompare } from "../components/PlanTreeCompare";
-import { QueryComparisonChart } from "../components/QueryComparisonChart";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useExperimentPolling } from "../hooks/useExperimentPolling";
 import { exportCsv, exportJson } from "../lib/export";
 import { strategyChange } from "../lib/plan";
 import { indexLabel } from "../lib/index";
 import { belowNoiseFloor } from "../lib/noise";
-import { verdict } from "../lib/verdict";
 import { IconDownload } from "../components/Icons";
 
 function MetaRow({ experiment }: { experiment: Experiment }) {
@@ -113,13 +111,6 @@ export function ExperimentResult() {
   }
 
   const results = experiment.queryResults;
-  const improved = results.filter((r) => r.status === "IMPROVED").length;
-  const regressed = results.filter((r) => r.status === "REGRESSED").length;
-  const unchanged = results.length - improved - regressed;
-  const overall = experiment.overallPercentageChange;
-
-  const finding = verdict(experiment);
-
   return (
     <div>
       <PageHeader
@@ -131,7 +122,6 @@ export function ExperimentResult() {
             </span>
           </>
         }
-        sub={finding ?? undefined}
         actions={
           <>
             <button className="btn btn-sm" onClick={copyLink}>{copied ? "Copied" : "Copy link"}</button>
@@ -155,43 +145,7 @@ export function ExperimentResult() {
         </div>
       )}
 
-      <div className="strip">
-        <div className="strip-cell">
-          <div className="strip-label">
-            Overall change
-            <InfoTooltip text="The median of each query's percentage change. Median (not average) so one especially large swing in a single query doesn't dominate the headline number." />
-          </div>
-          <div className={`strip-value ${overall === null ? "" : overall <= 0 ? "good" : "bad"}`}>
-            {overall === null ? "–" : <AnimatedNumber value={overall} format={formatChangeText} />}
-          </div>
-          <div className="strip-hint">median across {results.length} {results.length === 1 ? "query" : "queries"}</div>
-        </div>
-        <div className="strip-cell">
-          <div className="strip-label">Improved</div>
-          <div className={`strip-value ${improved ? "good" : ""}`}>{improved}</div>
-          <div className="strip-hint">faster by more than {(experiment.thresholdFraction * 100).toFixed(0)}%</div>
-        </div>
-        <div className="strip-cell">
-          <div className="strip-label">Unchanged</div>
-          <div className="strip-value">{unchanged}</div>
-          <div className="strip-hint">within the threshold</div>
-        </div>
-        <div className="strip-cell">
-          <div className="strip-label">Regressed</div>
-          <div className={`strip-value ${regressed ? "bad" : ""}`}>{regressed}</div>
-          <div className="strip-hint">slower by more than {(experiment.thresholdFraction * 100).toFixed(0)}%</div>
-        </div>
-      </div>
-
-      <section className="panel">
-        <div className="panel-head">
-          <h2 className="panel-title">Median time per query</h2>
-          <span className="panel-meta">median of {experiment.repetitions} runs, log scale</span>
-        </div>
-        <div className="panel-body">
-          <QueryComparisonChart results={results} />
-        </div>
-      </section>
+      <Hero experiment={experiment} eyebrow={<>Result · threshold {(experiment.thresholdFraction * 100).toFixed(0)}%</>} />
 
       <section className="panel">
         <div className="panel-head">

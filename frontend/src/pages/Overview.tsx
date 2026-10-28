@@ -3,14 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Experiment, ExperimentQueryResult } from "../api/types";
 import { changeClassName, formatChangeText, formatDate } from "../format";
-import { AnimatedNumber } from "../components/AnimatedNumber";
-import { Dumbbell } from "../components/Dumbbell";
+import { Hero } from "../components/Hero";
 import { PageHeader } from "../components/PageHeader";
 import { RunBars } from "../components/RunBars";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { indexLabel } from "../lib/index";
-import { verdict } from "../lib/verdict";
 
 const TREND_RUNS = 12;
 
@@ -49,14 +47,13 @@ export function Overview() {
   );
 
   const best = completed.length ? Math.min(...completed.map((e) => e.overallPercentageChange as number)) : null;
-  const finding = latest ? verdict(latest) : null;
   const running = (experiments ?? []).find((e) => e.status === "RUNNING");
 
   return (
     <div>
       <PageHeader
         title="Overview"
-        sub={finding ?? (experiments === null ? " " : "No completed experiments yet. Run one to see what an index does to your queries.")}
+        sub={latest ? "What your last index experiment did to the workload." : experiments === null ? " " : "No completed experiments yet. Run one to see what an index does to your queries."}
         actions={
           <button className="btn btn-primary" onClick={() => navigate("/experiments")}>
             New experiment
@@ -74,28 +71,15 @@ export function Overview() {
       )}
 
       {latest && latest.overallPercentageChange !== null && (
-        <section className="panel">
-          <div className="panel-head">
-            <h2 className="panel-title">
-              Latest run
-              <span className="panel-meta" style={{ marginLeft: 8, fontWeight: 400 }}>
-                #{latest.experimentId} on <span className="mono">{indexLabel(latest)}</span>, {formatDate(latest.createdAt)}
-              </span>
-            </h2>
-            <span className="panel-meta">
-              <Link to={`/experiments/${latest.experimentId}`}>Open result</Link>
-            </span>
-          </div>
-          <div className="latest">
-            <div className="latest-figure">
-              <div className={`latest-value ${changeClassName(latest.overallPercentageChange)}`}>
-                <AnimatedNumber value={latest.overallPercentageChange} format={formatChangeText} />
-              </div>
-              <div className="latest-caption">median change across {latest.queryResults.length} {latest.queryResults.length === 1 ? "query" : "queries"}</div>
-            </div>
-            <Dumbbell results={latest.queryResults} />
-          </div>
-        </section>
+        <Hero
+          experiment={latest}
+          eyebrow={
+            <>
+              Latest run · #{latest.experimentId} · <span className="mono">{indexLabel(latest)}</span> · {formatDate(latest.createdAt)}
+            </>
+          }
+          aside={<Link to={`/experiments/${latest.experimentId}`} className="hero-link">Open result</Link>}
+        />
       )}
 
       <div className="grid grid-2-1">
