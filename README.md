@@ -58,8 +58,8 @@ multi-table joins. Neither the API nor the UI accepts arbitrary SQL against
 this dataset.
 
 **Running an experiment.** The supported change is adding an index — on
-`orders.customer_id` for the built-in workload, or on any column for a
-custom query (see Query Builder below). An experiment runs the workload
+`orders.customer_id` for the built-in workload, or on one or more columns
+for a custom query (see Query Builder below). An experiment runs the workload
 with the index absent, then present, five times per query, and takes the
 median as the representative time. A single timing sample is mostly noise;
 five runs and a median cut through most of it.
@@ -92,7 +92,25 @@ runs. Every table and column name is checked against `information_schema`
 before touching SQL — no raw SQL box, and the one user-supplied value (a
 filter value) is always a bound parameter. Import a CSV first to point it
 at your own data; Postgres's own `COPY` parses and loads it, with a type
-inferred per column.
+inferred per column. The upload is spooled to a temp file and read twice
+(type inference, then `COPY`), so memory doesn't grow with the file size.
+
+The index can be composite: pick several columns and their click order is
+the index order, which matters, because the planner can use `(a, b)` for
+filters on `a` or on `a` and `b` together but not on `b` alone. Before the
+baseline, PLANSHIFT drops every index it created earlier that leads with
+the same column. Without that, a leftover single-column index from a
+previous run would serve the composite experiment's "before" and hide the
+real effect. Indexes you made yourself are never dropped, and the schema
+view marks columns that already have one.
+
+**Reading the results.** Each run gets a one-sentence finding computed from
+the result rows, a before/after dot per query with the scan strategy that
+changed (for example Seq Scan to Bitmap Heap Scan), CSV/JSON export, and a
+side-by-side compare for any two experiments. Runs where every query is
+under 1 ms get a warning, since at that scale the percentages are mostly
+timer jitter. `Ctrl/⌘ K` opens a command palette for jumping between pages
+and recent runs.
 
 **Predicting impact before running the real experiment.** A real
 experiment is slow on purpose — it actually drops and re-adds an index and
@@ -170,16 +188,18 @@ when that's a regression.
 
 ## Testing
 
-32 backend tests, plus 16 frontend tests (Vitest + React Testing Library,
+44 backend tests, plus 18 frontend tests (Vitest + React Testing Library,
 covering the format helpers and a couple of components). Backend unit
 tests (`RegressionDetectorTest`, `PlanParserTest`, `PlanComparatorTest`,
 `HealthControllerTest`, `QueryBuilderServiceTest`) cover pure logic,
 including feeding `"orders; DROP TABLE orders; --"` in as a table name and
 checking it gets rejected. Integration tests (`DataGeneratorIT`,
-`IndexExperimentIT`, `CsvImportServiceIT`) run against a disposable
+`IndexExperimentIT`, `CsvImportServiceIT`, `SchemaServiceIT`,
+`IndexChangeServiceIT`) run against a disposable
 Postgres container via Testcontainers: reproducibility, referential
 integrity, the full experiment pipeline end to end, and CSV import through
-real `COPY`, including a quoted field with a comma in it.
+real `COPY` (including a quoted field with a comma in it), already-indexed
+column detection, and composite index creation and baseline cleanup.
 
 One of them caught a real flake: `orderHistoryQueryImprovesWithIndex`
 asserted `candidate <= baseline`, which at small scale is sub-millisecond
