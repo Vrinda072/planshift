@@ -17,6 +17,12 @@ public class HealthController {
         this.jdbc = jdbc;
     }
 
+    /** Doesn't touch the database, so an uptime pinger can keep the service awake without waking Postgres. */
+    @GetMapping("/api/ping")
+    public Map<String, String> ping() {
+        return Map.of("status", "ok");
+    }
+
     @GetMapping("/api/health")
     public ResponseEntity<Map<String, String>> health() {
         try {

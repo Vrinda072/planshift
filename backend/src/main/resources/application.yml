@@ -5,6 +5,13 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:planshift}${DB_PARAMS:}
     username: ${DB_USER:planshift}
     password: ${DB_PASSWORD:planshift}
+    hikari:
+      # Neon suspends idle compute and drops connections; don't hold idle ones
+      # and recycle before the server does, so a request never gets a dead one.
+      minimum-idle: 0
+      idle-timeout: 60000
+      max-lifetime: 240000
+      connection-timeout: 20000
   sql:
     init:
       mode: always
