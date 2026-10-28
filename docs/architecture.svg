@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 250" width="960" height="250" role="img" aria-label="Browser to Spring Boot API to PostgreSQL">
+  <style>
+    text { font-family: "Geist", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #0a0a0a; }
+    .box { fill: #fafafa; stroke: #d4d4d8; stroke-width: 1; }
+    .title { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+    .sub { font-size: 12.5px; fill: #6b6b75; }
+    .mono { font-family: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; fill: #3f3f46; }
+    .line { stroke: #0a0a0a; stroke-width: 1.2; fill: none; }
+    .tag { font-size: 11.5px; fill: #6b6b75; }
+    .foot { font-size: 12px; fill: #8a8a93; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L8 4 L0 8" fill="none" stroke="#0a0a0a" stroke-width="1.2"/>
+    </marker>
+  </defs>
+
+  <rect class="box" x="20" y="30" width="210" height="150" rx="8"/>
+  <text class="title" x="40" y="62">Frontend</text>
+  <text class="sub" x="40" y="84">React, TypeScript, Vite</text>
+  <text class="sub" x="40" y="120">Query builder, results,</text>
+  <text class="sub" x="40" y="138">plan diff, compare</text>
+
+  <rect class="box" x="330" y="30" width="330" height="150" rx="8"/>
+  <text class="title" x="350" y="62">API</text>
+  <text class="sub" x="350" y="84">Spring Boot, plain JDBC</text>
+  <text class="mono" x="350" y="116">experiment</text>
+  <text class="mono" x="350" y="138">benchmark</text>
+  <text class="mono" x="350" y="160">queryplan</text>
+  <text class="mono" x="490" y="116">querybuilder</text>
+  <text class="mono" x="490" y="138">schema</text>
+  <text class="mono" x="490" y="160">dataimport</text>
+
+  <rect class="box" x="760" y="30" width="180" height="150" rx="8"/>
+  <text class="title" x="780" y="62">PostgreSQL 16</text>
+  <text class="sub" x="780" y="84">your tables, plus</text>
+  <text class="sub" x="780" y="102">experiment history</text>
+  <text class="sub" x="780" y="138">EXPLAIN ANALYZE</text>
+  <text class="sub" x="780" y="156">COPY, CREATE INDEX</text>
+
+  <path class="line" d="M232 105 H328" marker-end="url(#a)"/>
+  <text class="tag" x="246" y="96">REST</text>
+  <path class="line" d="M662 105 H758" marker-end="url(#a)"/>
+  <text class="tag" x="678" y="96">JDBC</text>
+
+  <text class="foot" x="20" y="222">Hosted on Vercel, Render and Neon. A scheduled GitHub Actions ping keeps the free Render instance awake.</text>
+</svg>

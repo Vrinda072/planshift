@@ -2,312 +2,74 @@
 
 [![CI](https://github.com/Vrinda072/planshift/actions/workflows/ci.yml/badge.svg)](https://github.com/Vrinda072/planshift/actions/workflows/ci.yml)
 
-Does adding that index actually help? PLANSHIFT answers with measurements
-instead of a guess.
+Does adding that index actually help? PLANSHIFT measures it.
 
 ![Demo: pick a table, filter on a column, choose an index, run the experiment and read the before/after result](docs/demo.gif)
 
-*Real data: 564,516 Uber pickups loaded from a CSV. Filtering on `lat`, the
-index takes the query from 10.0 ms to 0.28 ms, and the plan shows why.*
+*564,516 Uber pickups loaded from a CSV. Indexing `lat` takes the filtered
+query from 10.0 ms to 0.28 ms, and the plan shows why.*
 
 **Live:** [frontend](https://frontend-mauve-two-60.vercel.app) ·
-[backend health check](https://planshift-backend.onrender.com/api/health)
-(the backend is a REST API with no UI of its own, so that link is just
-proof it's up). It runs on free-tier hosting, so the first request after
-it's been idle can take about 30 seconds.
+[backend health](https://planshift-backend.onrender.com/api/health). It's
+on free hosting, so the first request after a quiet spell can take ~30 s.
 
-## What it solves
+## What it does
 
-"Just add an index" is the standard advice for a slow query, but an index
-isn't free: it slows writes, takes space, and sometimes the planner ignores
-it. Whether it helps depends on the data and the query, and the only way to
-know is to try it on both sides.
+Pick a table and a query, then choose an index (one column or several).
+PLANSHIFT times the query without the index, creates it, times it again, and
+compares the execution plans Postgres used both times. You get faster,
+slower or no real difference, and the scan strategy that changed. It works on
+a built-in 10-query workload or on any table, including your own CSV.
 
-PLANSHIFT does that comparison properly. You point it at a table and a
-query, choose the index to test, and it:
+## Example
 
-1. times the query **without** the index,
-2. creates the index,
-3. times the same query **with** it,
-4. captures Postgres's real execution plan both times, and
-5. tells you what changed: faster, slower, or no meaningful difference, and
-   which scan strategy the planner switched between.
+The Uber pickups data ([fivethirtyeight](https://github.com/fivethirtyeight/uber-tlc-foil-response),
+April 2014) has `date_time`, `lat`, `lon` and `base`. The query filters on
+one `lat` value, tested with two different indexes (median of 7 runs):
+
+| Index | Before | After | Change | Plan |
+|---|---:|---:|---:|---|
+| `lat` | 7.12 ms | 0.51 ms | -92.9% | Seq Scan to Bitmap Index Scan |
+| `(base, lat)` | 9.52 ms | 7.19 ms | -24.5% | unchanged, so the drop is noise |
+
+Same column, very different result: a composite index is ordered, so
+`(base, lat)` only helps filters that start with `base`. On the built-in
+e-commerce data (500k orders), the order-history query improves 97% with an
+index on `orders.customer_id` (8.6 ms to 0.26 ms), while queries that don't
+filter on that column stay within noise.
 
 ## How it works
 
-```mermaid
-sequenceDiagram
-    participant UI as React UI
-    participant API as Spring Boot API
-    participant PG as PostgreSQL
-
-    UI->>API: start experiment (table, query, index columns)
-    API->>PG: save experiment as RUNNING
-    API-->>UI: 202 + experiment id
-    Note over API,PG: background thread
-    API->>PG: drop PLANSHIFT indexes on the table
-    API->>PG: warm up, time the query N times, EXPLAIN ANALYZE
-    API->>PG: CREATE INDEX
-    API->>PG: warm up, time the query N times, EXPLAIN ANALYZE
-    API->>PG: save medians, % change, plan diff, status
-    loop while RUNNING
-        UI->>API: GET experiment
-        API-->>UI: current phase
-    end
-    UI->>API: GET experiment
-    API-->>UI: results
-```
-
-The progress you see in the UI is the real phase the background thread is
-in, not a timer.
-
-Each query's time is the **median** of N runs, because a single timing is
-mostly noise. The change is `(after - before) / before`, and a threshold
-(20% by default) sorts it:
-
-```mermaid
-flowchart LR
-    A["change = (after - before) / before"] --> B{"vs threshold"}
-    B -- "at most -20%" --> C["IMPROVED"]
-    B -- "between" --> D["UNCHANGED"]
-    B -- "at least +20%" --> E["REGRESSED"]
-```
-
-You can run the built-in 10-query workload against a synthetic e-commerce
-dataset, or use the **query builder** on any table, including your own CSV
-(Postgres loads it with `COPY` and infers a type per column).
+- Each query runs N times per side and the **median** is used, since one
+  timing is mostly noise. The change is `(after - before) / before`; beyond
+  a threshold (20% by default) it counts as improved or regressed.
+- Each side gets an untimed warm-up first. Without it, whichever side runs
+  second inherits a warm cache and looks faster whatever the index does.
+- Before the baseline, every index PLANSHIFT created earlier on that table is
+  dropped, so "before" really means "none of ours". Indexes you made yourself
+  are never touched.
+- Plans come from `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`, are parsed into a
+  small tree and diffed, which is where "Seq Scan to Bitmap Index Scan" comes from.
+- No raw SQL is accepted. Table and column names are checked against
+  `information_schema`, and the one user value (a filter value) is a bound
+  parameter.
+- Experiments run on a background thread. The UI polls and shows the phase it
+  is actually in.
+- "Estimate impact first" gives a quick guess from a plain `EXPLAIN` plus past
+  runs, and says so when it has too little history to be more than a rule of
+  thumb.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    UI["React + TypeScript<br/>(Vite)"] -- "REST / JSON" --> API
+![Frontend, API and PostgreSQL](docs/architecture.svg)
 
-    subgraph API["Spring Boot API"]
-        direction TB
-        CT["controllers"] --> EX["experiment<br/>orchestrator"]
-        CT --> QB["querybuilder"]
-        CT --> DI["dataimport<br/>(CSV to COPY)"]
-        EX --> BM["benchmark<br/>(repeat + median)"]
-        EX --> QP["queryplan<br/>(EXPLAIN parse + diff)"]
-        EX --> IX["index changes"]
-        QB --> SC["schema<br/>(validates every identifier)"]
-        IX --> SC
-    end
-
-    API -- JDBC --> PG[("PostgreSQL 16")]
-```
-
-No microservices, queue or ORM: a JDBC-backed Spring Boot API and a static
-React frontend. The problem didn't need more.
-
-Backend packages (`backend/src/main/java/com/planshift/`):
-
-| Package | Responsibility |
-|---|---|
-| `datagen` | Deterministic synthetic dataset generation, seeded `Random` |
-| `workload` | The fixed catalog of 10 benchmark queries |
-| `benchmark` | Times query execution, repeated and median-aggregated |
-| `queryplan` | Captures `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`, parses it into a tree, diffs two trees |
-| `experiment` | Baseline-vs-candidate orchestration, async with real progress phases, regression classification, persistence |
-| `schema` | Live introspection via `information_schema`; backs the query builder and validates every identifier before it reaches SQL |
-| `querybuilder` | Structured table/columns/filter spec to parameterized SQL, no raw SQL accepted |
-| `dataimport` | CSV to Postgres table via `COPY`, streamed, with per-column type inference |
-| `controller` | REST API |
-
-### Where it runs
-
-```mermaid
-flowchart LR
-    U(["Browser"]) --> V["Vercel<br/>static React build"]
-    V -- "REST" --> R["Render<br/>Spring Boot (Docker)"]
-    R -- "JDBC + SSL" --> N[("Neon<br/>Postgres, us-west-2")]
-    G["GitHub Actions<br/>keep-alive ping"] -. "/api/ping" .-> R
-```
-
-The free Render instance sleeps when idle, so a scheduled GitHub Actions job
-pings it. The connection pool is tuned for Neon, which suspends idle
-databases and drops connections.
-
-## Example: real data, a different dataset
-
-564,516 rows from [fivethirtyeight's Uber pickups
-data](https://github.com/fivethirtyeight/uber-tlc-foil-response) (April
-2014, 26 MB CSV), imported through the app: `date_time`, `lat`, `lon`,
-`base`. The query filters on one latitude value; the same query is tested
-with two different indexes (7 runs each, median):
-
-| Index | Before | After | Change | What the planner did |
-|---|---:|---:|---:|---|
-| `lat` | 7.12 ms | 0.51 ms | -92.9% | Seq Scan to Bitmap Index Scan |
-| `(base, lat)` | 9.52 ms | 7.19 ms | -24.5% | No plan change (the drop is timing noise) |
-
-Same columns, very different outcome. A composite index is ordered, so
-`(base, lat)` is only useful for filters that start with `base`. The query
-filters on `lat` alone, so the planner ignores the index and keeps scanning
-the table. That's the kind of thing that's easy to get wrong and invisible
-until you measure it.
-
-## Design notes
-
-**Dataset.** A synthetic e-commerce schema — customers, products, orders,
-order_items — generated from a fixed seed, so re-running the generator
-produces identical data. `DataGeneratorIT` checks this directly: two
-generations, same seed, same checksum.
-
-**Workload.** Ten read-only queries covering selective and non-selective
-filters, date ranges, joins, aggregation, `GROUP BY`, `ORDER BY`, and
-multi-table joins. Neither the API nor the UI accepts arbitrary SQL against
-this dataset.
-
-**Running an experiment.** The supported change is adding an index — on
-`orders.customer_id` for the built-in workload, or on one or more columns
-for a custom query (see Query Builder below). An experiment runs the workload
-with the index absent, then present, five times per query, and takes the
-median as the representative time. A single timing sample is mostly noise;
-five runs and a median cut through most of it.
-
-One subtlety cost me a real bug: running baseline immediately followed by
-candidate lets whichever phase runs second inherit a warm cache from the
-first, making it look faster regardless of the index. Each phase now runs
-an untimed pass over the workload first to warm up on its own terms —
-`IndexExperimentService.warmUp`.
-
-**Regression detection.** `percentage_change = (candidate - baseline) /
-baseline * 100`. A configurable threshold, 20% by default, sorts each query
-into improved, unchanged, or regressed.
-
-**Plan comparison.** Plans are parsed into a simplified tree and diffed
-with a recursive positional walk, not full tree-edit-distance — these
-trees are shallow enough that the simpler approach is correct and a lot
-easier to read. See the comment in `PlanComparator` for the reasoning.
-
-**Progress.** `POST /api/experiments` returns immediately with the
-experiment in `RUNNING` state. The work runs on a background thread (Java
-21 virtual threads), updating a `current_phase` column at each step —
-dropping the index, warming up, measuring, adding the index, comparing.
-The frontend polls and shows whichever phase is actually running.
-
-**Query Builder.** The built-in dataset and workload are one fixed
-example. Query Builder works against any table: pick columns, an optional
-filter, order, and limit, and the generated SQL is shown before anything
-runs. Every table and column name is checked against `information_schema`
-before touching SQL — no raw SQL box, and the one user-supplied value (a
-filter value) is always a bound parameter. Import a CSV first to point it
-at your own data; Postgres's own `COPY` parses and loads it, with a type
-inferred per column. The upload is spooled to a temp file and read twice
-(type inference, then `COPY`), so memory doesn't grow with the file size.
-
-The index can be composite: pick several columns and their click order is
-the index order, which matters, because the planner can use `(a, b)` for
-filters on `a` or on `a` and `b` together but not on `b` alone (see the
-Uber example above). Before the baseline, PLANSHIFT drops every index it
-created earlier on that table, so "before" means "none of ours". Without
-that, a leftover index from a previous run would serve the query and hide
-the real effect; I hit this while building the Uber example, where an
-earlier `lat` index made the composite experiment's baseline 10x faster than
-it should have been. Indexes you made yourself are never dropped, and the
-schema view marks columns that already have one.
-
-**Reading the results.** Each run gets a one-sentence finding computed from
-the result rows, a before/after dot per query with the scan strategy that
-changed (for example Seq Scan to Bitmap Heap Scan), CSV/JSON export, and a
-side-by-side compare for any two experiments. Runs where every query is
-under 1 ms get a warning, since at that scale the percentages are mostly
-timer jitter. `Ctrl/⌘ K` opens a command palette for jumping between pages
-and recent runs.
-
-**Predicting impact before running the real experiment.** A real
-experiment is slow on purpose — it actually drops and re-adds an index and
-times both sides. "Predict Impact" gives a cheaper answer first: a plain
-`EXPLAIN` (nothing executes) gets the planner's own row estimate for the
-query, turned into a selectivity ratio, which is compared against every
-past *completed* experiment with a similar selectivity — close matches get
-averaged into a prediction. Below three matches, it falls back to a
-selectivity-only heuristic and says so explicitly, rather than presenting
-a guess as a measurement.
-
-## Example: the built-in workload
-
-100,000 customers, 500,000 orders, 1.5M order_items, Postgres 16, via
-docker-compose:
-
-| Query | Baseline (median of 5) | Candidate (median of 5) | Change | Status |
-|---|---:|---:|---:|---|
-| Selective customer lookup | 0.390 ms | 0.227 ms | -41.7% | IMPROVED |
-| Non-selective customer lookup | 47.105 ms | 43.735 ms | -7.2% | UNCHANGED |
-| Order history lookup | 8.562 ms | 0.260 ms | -97.0% | IMPROVED |
-| Date-range query | 56.049 ms | 39.632 ms | -29.3% | IMPROVED |
-| Join query | 247.536 ms | 219.605 ms | -11.3% | UNCHANGED |
-| Aggregation | 12.811 ms | 13.172 ms | +2.8% | UNCHANGED |
-| Group by order status | 18.978 ms | 18.538 ms | -2.3% | UNCHANGED |
-| Order by total value | 14.419 ms | 14.408 ms | -0.1% | UNCHANGED |
-| Product lookup | 0.816 ms | 0.668 ms | -18.1% | UNCHANGED |
-| Multi-table revenue by category | 42.404 ms | 46.558 ms | +9.8% | UNCHANGED |
-
-Overall: -9.2%.
-
-The order-history query — filtered on `customer_id`, the column that gets
-indexed — improved 97%. The plan explains why:
-
-```
-BEFORE (no index):                    AFTER (with index):
-Sort                                  Sort
- └─ Gather                             └─ Bitmap Heap Scan on orders
-     └─ Seq Scan on orders                 └─ Bitmap Index Scan
-        Filter: (customer_id = 500)           via idx_orders_customer_id
-        (parallel workers scan the             Index Cond: (customer_id = 500)
-         full table and combine results)
-```
-
-Worth noting: Postgres didn't pick a plain Index Scan. It used a Bitmap
-Index Scan combined with a Bitmap Heap Scan, and the baseline was a
-*parallel* sequential scan (`Gather`), not a simple one — the table's large
-enough that the planner judged parallelism worthwhile. I didn't simplify
-this for the writeup; it's what actually ran.
-
-Every other query, none of which filter on `customer_id`, landed at
-`UNCHANGED` — single-digit swings from ordinary system noise, inside the
-20% threshold.
-
-A smaller early run (1,000 customers) showed every query "improving,"
-which turned out to be the cache-warming bug above, not the index. Kept
-here because catching your own benchmark's confound is a more useful
-result than pretending it didn't happen.
-
-## Testing
-
-44 backend tests, plus 18 frontend tests (Vitest + React Testing Library,
-covering the format helpers and a couple of components). Backend unit
-tests (`RegressionDetectorTest`, `PlanParserTest`, `PlanComparatorTest`,
-`HealthControllerTest`, `QueryBuilderServiceTest`) cover pure logic,
-including feeding `"orders; DROP TABLE orders; --"` in as a table name and
-checking it gets rejected. Integration tests (`DataGeneratorIT`,
-`IndexExperimentIT`, `CsvImportServiceIT`, `SchemaServiceIT`,
-`IndexChangeServiceIT`) run against a disposable
-Postgres container via Testcontainers: reproducibility, referential
-integrity, the full experiment pipeline end to end, and CSV import through
-real `COPY` (including a quoted field with a comma in it), already-indexed
-column detection, and composite index creation and baseline cleanup.
-
-One of them caught a real flake: `orderHistoryQueryImprovesWithIndex`
-asserted `candidate <= baseline`, which at small scale is sub-millisecond
-and noisy enough to occasionally fail on nothing but timing jitter.
-Replaced with an assertion on the plan itself — the scan strategy changed
-— which is deterministic.
-
-```bash
-cd backend
-mvn test      # unit tests
-mvn verify    # unit + integration tests, needs Docker running
-
-cd frontend
-npm test
-```
+No queue, no ORM, no microservices. The backend packages are `experiment`,
+`benchmark`, `queryplan`, `querybuilder`, `schema`, `dataimport`, `datagen`
+and `workload`, under `backend/src/main/java/com/planshift/`.
 
 ## Running it
 
-Requires Docker and Docker Compose.
+Needs Docker.
 
 ```bash
 git clone https://github.com/Vrinda072/planshift.git
@@ -316,53 +78,40 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-`.env` holds the Postgres credentials (`docker-compose.yml` reads it via
-`env_file:`) and isn't committed. The defaults in `.env.example` work fine
-for local use as-is; change them if you're running this anywhere other
-people can reach it.
+The UI is on :5173, the API on :8080, Postgres on :5432. If any of those
+ports are taken, remap them with `POSTGRES_HOST_PORT`, `BACKEND_HOST_PORT`
+and `FRONTEND_HOST_PORT` in `.env` and rebuild (the frontend bakes in the
+API URL at build time).
 
-Postgres on 5432, the API on 8080, the frontend on 5173 by default. Any of
-these can collide with something already running on your machine --
-`POSTGRES_HOST_PORT`, `BACKEND_HOST_PORT`, and `FRONTEND_HOST_PORT` in
-`.env` remap them. If you change `BACKEND_HOST_PORT`, rebuild
-(`docker compose up -d --build`, not just `up -d`) -- the frontend has the
-API URL baked in at build time, not read at runtime.
-
-The database starts empty:
+The database starts empty. Load the built-in dataset (100k customers, 500k
+orders) with:
 
 ```bash
 cd backend
 mvn spring-boot:run -Dspring-boot.run.arguments="--generate-data --scale=full"
 ```
 
-`--scale=full` is the fixed 100k/500k preset used above; anything else
-(including omitting `--scale`) uses the `DATASET_CUSTOMERS`/`DATASET_PRODUCTS`/
-`DATASET_ORDERS`/`DATASET_MAX_ITEMS_PER_ORDER`/`DATASET_SEED` values in
-`.env`, 1,000 customers by default -- fast, for local iteration. Either
-way, `--customers`/`--products`/`--orders`/`--max-items`/`--seed` override
-individual fields for a one-off size without touching `.env` or `--scale=full`:
-
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments="--generate-data --scale=full --customers=200000"
-```
-
-Or skip the built-in dataset and use Query Builder to import your own CSV.
-
-Then hit "Run Experiment" in the UI, or:
-
-```bash
-curl -X POST http://localhost:8080/api/experiments \
-  -H "Content-Type: application/json" \
-  -d '{"repetitions": 5, "thresholdFraction": 0.20}'
-```
-
-### Local development, without full rebuilds
+or skip it and import your own CSV from the query builder. For development
+without rebuilding images:
 
 ```bash
 docker compose up -d postgres
-cd backend && mvn spring-boot:run     # :8080
-cd frontend && npm install && npm run dev   # :5173
+cd backend && mvn spring-boot:run          # :8080
+cd frontend && npm install && npm run dev  # :5173
 ```
+
+## Tests
+
+```bash
+cd backend && mvn verify   # 44 tests; integration tests use Testcontainers, so Docker must be running
+cd frontend && npm test    # 18 tests
+```
+
+The integration tests run against a real Postgres: the full experiment
+pipeline, CSV import through `COPY`, already-indexed column detection and
+composite index creation. One test used to assert `candidate <= baseline`,
+which flaked on sub-millisecond timing noise, so it now asserts that the scan
+strategy changed instead.
 
 ## API
 
