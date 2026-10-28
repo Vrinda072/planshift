@@ -65,21 +65,22 @@ public class IndexChangeService {
     }
 
     /**
-     * Clears the baseline: drops every PLANSHIFT-created index on this table that leads with the same column as
-     * the index under test, including ones left over from earlier experiments (a single-column index from a previous
-     * run would otherwise serve a composite experiment's "before" and hide the real effect). Indexes the user
-     * created themselves are never touched.
+     * Clears the baseline: drops every PLANSHIFT-created index on this table, including ones left over from
+     * earlier experiments, so "before" really means "none of ours". Otherwise a leftover index on any column of
+     * the table could serve the query and hide the effect of the one under test. Indexes the user created
+     * themselves are never touched.
      */
-    public void dropManagedIndexesLeadingWith(String table, IndexSpec spec) {
-        requireValid(table, spec);
+    public void dropManagedIndexes(String table) {
+        if (!schemaService.tableExists(table)) {
+            throw new IllegalArgumentException("Unknown table: " + table);
+        }
         List<String> names = jdbc.queryForList(
                 "SELECT ic.relname FROM pg_index i "
                         + "JOIN pg_class c ON c.oid = i.indrelid "
                         + "JOIN pg_class ic ON ic.oid = i.indexrelid "
                         + "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                        + "JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = i.indkey[0] "
-                        + "WHERE n.nspname = 'public' AND c.relname = ? AND a.attname = ?",
-                String.class, table, spec.columns().get(0));
+                        + "WHERE n.nspname = 'public' AND c.relname = ?",
+                String.class, table);
         for (String name : names) {
             if (IndexNaming.isManaged(name)) {
                 jdbc.execute("DROP INDEX IF EXISTS " + quoteIdent(name));

@@ -71,17 +71,15 @@ class IndexChangeServiceIT {
     }
 
     @Test
-    void baselineClearsLeftoverManagedIndexesButKeepsUserOnes() {
+    void baselineClearsEveryManagedIndexOnTheTableButKeepsUserOnes() {
         probeTable();
         jdbc.execute("CREATE INDEX my_own_idx ON idx_probe (a)");
         indexChangeService.addIndex("idx_probe", IndexSpec.of("a"));
         indexChangeService.addIndex("idx_probe", new IndexSpec(List.of("a", "b")));
         indexChangeService.addIndex("idx_probe", IndexSpec.of("c"));
 
-        indexChangeService.dropManagedIndexesLeadingWith("idx_probe", new IndexSpec(List.of("a", "b")));
+        indexChangeService.dropManagedIndexes("idx_probe");
 
-        assertThat(definitions()).hasSize(2)
-                .anyMatch(d -> d.contains("my_own_idx"))
-                .anyMatch(d -> d.contains("(c)"));
+        assertThat(definitions()).singleElement().asString().contains("my_own_idx");
     }
 }

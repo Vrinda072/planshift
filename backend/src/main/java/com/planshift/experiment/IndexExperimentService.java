@@ -131,7 +131,7 @@ public class IndexExperimentService {
                           int repetitions, double thresholdFraction, String indexTable, IndexSpec index) {
         try {
             experimentRepository.updatePhase(experimentId, ExperimentPhase.DROPPING_INDEX);
-            indexChangeService.dropManagedIndexesLeadingWith(indexTable, index);
+            indexChangeService.dropManagedIndexes(indexTable);
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.WARMING_UP_BASELINE);
             warmUp(queries, params);
