@@ -33,8 +33,8 @@ export function TrendSparkline({ values }: { values: number[] }) {
 
   return (
     <svg
-      width={220}
-      height={HEIGHT}
+      width="100%"
+      height={56}
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       preserveAspectRatio="none"
       role="img"
@@ -53,9 +53,6 @@ export function TrendSparkline({ values }: { values: number[] }) {
         pathLength={100}
         className="sparkline-path"
       />
-      {points.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={i === points.length - 1 ? 2.2 : 1.2} fill={lineColor} opacity={i === points.length - 1 ? 1 : 0.55} />
-      ))}
     </svg>
   );
 }
