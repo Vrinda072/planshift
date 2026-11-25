@@ -2,12 +2,16 @@ package com.planshift.impact;
 
 import com.planshift.experiment.ExperimentRepository;
 import com.planshift.experiment.IndexSpec;
+import com.planshift.querybuilder.BuiltQuery;
+import com.planshift.querybuilder.QueryBuilderService;
 import com.planshift.querybuilder.QuerySpec;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -15,6 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 @SpringBootTest
@@ -65,5 +70,33 @@ class ImpactPredictionIT {
         assertThat(fromHistory.method()).isEqualTo("historical");
         assertThat(fromHistory.sampleSize()).isEqualTo(3);
         assertThat(fromHistory.predictedPercentageChange()).isEqualTo(-50.0);
+    }
+
+    @Autowired
+    private NamedParameterJdbcTemplate namedJdbc;
+
+    @Autowired
+    private QueryBuilderService queryBuilder;
+
+    @Test
+    void filterValuesAreReadAsTheColumnsOwnType() {
+        jdbc.execute("DROP TABLE IF EXISTS typed_probe");
+        jdbc.execute("CREATE TABLE typed_probe (d DATE, at TIMESTAMP, flag BOOLEAN, n INT, price NUMERIC, code TEXT)");
+        jdbc.execute("INSERT INTO typed_probe VALUES ('2025-03-01', '2025-03-01 10:00', true, 7, 1.5, '007')");
+
+        String[][] matching = {{"d", ">", "2025-01-01"}, {"at", "<", "2026-01-01 00:00"}, {"flag", "=", "true"},
+                {"n", "=", "7"}, {"price", "=", "1.5"}, {"code", "=", "007"}, {"code", "LIKE", "00%"}};
+        for (String[] filter : matching) {
+            BuiltQuery built = queryBuilder.build(spec(filter[0], filter[1], filter[2]));
+            assertThat(namedJdbc.queryForList(built.query().sql(), built.params())).as(filter[0]).hasSize(1);
+        }
+
+        BuiltQuery bad = queryBuilder.build(spec("n", "=", "seven"));
+        assertThatThrownBy(() -> namedJdbc.queryForList(bad.query().sql(), bad.params()))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    private static QuerySpec spec(String column, String operator, String value) {
+        return new QuerySpec("typed_probe", null, null, null, null, column, operator, value, null, null, 10);
     }
 }

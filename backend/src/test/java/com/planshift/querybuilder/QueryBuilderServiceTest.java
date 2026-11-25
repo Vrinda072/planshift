@@ -3,6 +3,7 @@ package com.planshift.querybuilder;
 import com.planshift.schema.SchemaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.SqlParameterValue;
 
 import java.util.List;
 
@@ -40,7 +41,7 @@ class QueryBuilderServiceTest {
         assertThat(built.query().sql()).contains("SELECT \"customer_id\", \"status\" FROM \"orders\"");
         assertThat(built.query().sql()).contains("WHERE \"status\" = :filterValue");
         assertThat(built.query().sql()).doesNotContain("COMPLETED");
-        assertThat(built.params()).containsEntry("filterValue", "COMPLETED");
+        assertThat(((SqlParameterValue) built.params().get("filterValue")).getValue()).isEqualTo("COMPLETED");
     }
 
     @Test

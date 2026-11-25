@@ -3,6 +3,7 @@ package com.planshift.controller;
 import com.planshift.experiment.QueueFullException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.sql.SQLException;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -38,6 +40,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(QueueFullException.class)
     public ResponseEntity<Map<String, String>> handleQueueFull(QueueFullException e) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", e.getMessage()));
+    }
+
+    /**
+     * A filter value that doesn't fit its column ("abc" against a number, say) is only discovered by Postgres.
+     * SQLSTATE class 22 is "data exception" and 42883 "no such operator" (LIKE on a number); both are bad input.
+     */
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<Map<String, String>> handleDataAccess(DataAccessException e) {
+        if (e.getMostSpecificCause() instanceof SQLException sql && sql.getSQLState() != null
+                && (sql.getSQLState().startsWith("22") || sql.getSQLState().equals("42883"))) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "That filter value or operator doesn't fit the column's type."));
+        }
+        return handleUnexpected(e);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

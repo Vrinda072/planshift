@@ -3,7 +3,10 @@ package com.planshift.querybuilder;
 import com.planshift.schema.SchemaService;
 import com.planshift.workload.QueryCategory;
 import com.planshift.workload.WorkloadQuery;
+import org.springframework.jdbc.core.SqlParameterValue;
 import org.springframework.stereotype.Service;
+
+import java.sql.Types;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -89,7 +92,9 @@ public class QueryBuilderService {
             }
             sql.append(" WHERE ").append(quoteIdent(spec.filterColumn()))
                     .append(" ").append(operator.toUpperCase()).append(" :filterValue");
-            params.put("filterValue", parseValue(spec.filterValue()));
+            // Values arrive as text. Bound without a declared type, Postgres reads them as the column's own type,
+            // so dates, timestamps, booleans and numbers all work, and so do digits stored in a text column.
+            params.put("filterValue", new SqlParameterValue(Types.OTHER, spec.filterValue()));
         }
 
         if (usingAggregate && spec.groupByColumn() != null) {
@@ -133,23 +138,5 @@ public class QueryBuilderService {
 
     private String quoteIdent(String identifier) {
         return "\"" + identifier.replace("\"", "\"\"") + "\"";
-    }
-
-    /** Filter values come in as strings from the UI; bind them as the most specific type we can infer. */
-    private Object parseValue(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        try {
-            return Long.parseLong(raw);
-        } catch (NumberFormatException ignored) {
-            // not an integer
-        }
-        try {
-            return Double.parseDouble(raw);
-        } catch (NumberFormatException ignored) {
-            // not a number at all -- treat as text
-        }
-        return raw;
     }
 }
