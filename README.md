@@ -12,6 +12,21 @@ query from 10.0 ms to 0.28 ms, and the plan shows why.*
 **Live:** [frontend](https://frontend-mauve-two-60.vercel.app) ·
 [backend health](https://planshift-backend.onrender.com/api/health). It's
 on free hosting, so the first request after a quiet spell can take ~30 s.
+**Try a sample experiment** on the Overview page runs one query against four
+indexes and shows what each saves and costs.
+
+## What has been measured
+
+- **Which indexes to try** ([study](docs/index-study.md), 224 experiments):
+  trying just the filter column, then the filter column plus the query's other
+  column, recovered 99% of the best saving found by testing every candidate.
+  Two random picks already got 90%, so on single-filter queries this is an
+  easy choice, and a learned ranker wasn't worth it.
+- **How much to trust a timing** ([A/A checks](#how-noisy-are-the-timings)):
+  with nothing changed, 11 to 17 of 100 comparisons still moved by more than
+  20%.
+- **Tests:** 57 backend (38 unit, 19 against a real Postgres), 25 frontend and
+  one full-stack browser test, all run in CI.
 
 ## What it does
 
@@ -19,7 +34,9 @@ Pick a table and a query, then choose an index (one column or several).
 PLANSHIFT times the query without the index, creates it, times it again,
 removes it, and compares the execution plans Postgres used both times. You get faster,
 slower or no real difference, and the scan strategy that changed. It works on
-a built-in 10-query workload or on any table, including your own CSV.
+a built-in 10-query workload or on any table, including your own CSV. From the
+query builder you can also measure several candidate indexes for one query side
+by side, with each one's size and build time.
 
 ## Example
 
@@ -88,9 +105,11 @@ your own setup before trusting small differences: it's a button in the UI, or
   `information_schema`, and the one user value (a filter value) is a bound
   parameter.
 - The UI polls and shows whether a run is queued or which phase it is actually in.
-- "Estimate impact first" gives a quick guess from a plain `EXPLAIN` plus past
-  runs, and says so when it has too little history to be more than a rule of
-  thumb.
+- "Estimate impact first" runs only plain `EXPLAIN`s. It looks at the whole
+  index (one whose first column the query can't use is expected to do
+  nothing), then takes the median of past runs that used an index the same way
+  on a similarly selective filter. With fewer than three of those it gives a
+  rule of thumb and marks it low confidence.
 
 ## Architecture
 
@@ -121,8 +140,11 @@ orders) with:
 
 ```bash
 cd backend
-mvn spring-boot:run -Dspring-boot.run.arguments="--generate-data --scale=full"
+mvn spring-boot:run -Dspring-boot.run.arguments="--generate-data --scale=full --server.port=0"
 ```
+
+(`--server.port=0` avoids clashing with the API already running in Docker.
+Stop it with Ctrl+C once it logs that generation has finished.)
 
 or skip it and import your own CSV from the query builder. For development
 without rebuilding images:
@@ -136,16 +158,17 @@ cd frontend && npm install && npm run dev  # :5173
 ## Tests
 
 ```bash
-cd backend && mvn verify   # 51 tests; integration tests use Testcontainers, so Docker must be running
-cd frontend && npm test    # 21 tests
+cd backend && mvn verify   # integration tests use Testcontainers, so Docker must be running
+cd frontend && npm test
+cd frontend && npm run e2e # needs the stack up; uses your installed Chrome
 ```
 
-The integration tests run against a real Postgres: the full experiment
-pipeline, CSV import through `COPY`, already-indexed column detection,
-composite indexes, and isolation (two experiments on one table can't overlap,
-and a failure after index creation leaves earlier indexes alone). One test used to assert `candidate <= baseline`,
-which flaked on sub-millisecond timing noise, so it now asserts that the scan
-strategy changed instead.
+The integration tests run against a real Postgres. They cover the experiment
+pipeline, CSV import, filtering on different column types, and isolation: two
+experiments on one table can't overlap, and a failure after index creation
+leaves earlier indexes alone. The browser test imports a CSV, runs an
+experiment and checks that both plans show up. No test asserts on timing, which
+is too noisy to pass reliably.
 
 ## API
 
