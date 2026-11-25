@@ -26,6 +26,10 @@ server:
   port: ${PORT:${SERVER_PORT:8080}}
 
 planshift:
+  benchmark:
+    # app: time each run around the JDBC call. database: use Postgres's own execution time instead, for hosts
+    # whose CPU is throttled enough to swamp the query being measured.
+    timing-source: ${TIMING_SOURCE:app}
   dataset:
     # Defaults used by --generate-data when --scale isn't "full" (and not
     # overridden by --customers/--products/--orders/--max-items/--seed).

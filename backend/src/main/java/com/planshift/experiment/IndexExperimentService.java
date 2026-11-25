@@ -213,7 +213,8 @@ public class IndexExperimentService {
                 Timing timing = new Timing(
                         baselineTimings.get(i).executionTimesMs(), candidateTimings.get(i).executionTimesMs(),
                         comparison.pValue(), comparison.evidence(),
-                        planStats(baselineCaptures.get(i)), planStats(candidateCaptures.get(i)));
+                        planStats(baselineCaptures.get(i)), planStats(candidateCaptures.get(i)),
+                        benchmarkService.timingSource());
                 ExperimentQueryResult result = new ExperimentQueryResult(
                         0, experimentId, comparison.queryId(), comparison.queryName(),
                         comparison.baselineMedianMs(), comparison.candidateMedianMs(),

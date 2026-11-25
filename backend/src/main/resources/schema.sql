@@ -117,5 +117,7 @@ ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS baseline_read_bloc
 ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS candidate_db_ms DOUBLE PRECISION;
 ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS candidate_hit_blocks BIGINT;
 ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS candidate_read_blocks BIGINT;
+-- APP or DATABASE: which clock produced the samples above.
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS timing_source VARCHAR(10) NOT NULL DEFAULT 'APP';
 
 CREATE INDEX IF NOT EXISTS idx_eqr_experiment_id ON experiment_query_results (experiment_id);

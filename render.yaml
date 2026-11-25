@@ -16,6 +16,9 @@ services:
         sync: false
       - key: DB_PASSWORD
         sync: false
+      # The free instance's CPU is throttled enough that app-side timings jump by ~90 ms at random.
+      - key: TIMING_SOURCE
+        value: database
       - key: DB_PARAMS
         value: "?sslmode=require"
       - key: ALLOWED_ORIGINS

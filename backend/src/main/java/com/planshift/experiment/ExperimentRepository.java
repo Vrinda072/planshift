@@ -1,5 +1,6 @@
 package com.planshift.experiment;
 
+import com.planshift.benchmark.TimingSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -73,8 +74,8 @@ public class ExperimentRepository {
                         + "candidate_median_ms, absolute_change_ms, percentage_change, status, baseline_plan_json, "
                         + "candidate_plan_json, plan_diff_summary, baseline_samples_ms, candidate_samples_ms, p_value, "
                         + "timing_evidence, baseline_db_ms, baseline_hit_blocks, baseline_read_blocks, candidate_db_ms, "
-                        + "candidate_hit_blocks, candidate_read_blocks) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        + "candidate_hit_blocks, candidate_read_blocks, timing_source) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 experimentId, r.queryId(), r.queryName(), r.baselineMedianMs(), r.candidateMedianMs(),
                 r.absoluteChangeMs(), r.percentageChange(), r.status().name(),
                 r.baselinePlanJson(), r.candidatePlanJson(), r.planDiffSummary(),
@@ -83,7 +84,7 @@ public class ExperimentRepository {
                 t.baselinePlanStats().executionTimeMs(), t.baselinePlanStats().sharedHitBlocks(),
                 t.baselinePlanStats().sharedReadBlocks(),
                 t.candidatePlanStats().executionTimeMs(), t.candidatePlanStats().sharedHitBlocks(),
-                t.candidatePlanStats().sharedReadBlocks());
+                t.candidatePlanStats().sharedReadBlocks(), t.source().name());
     }
 
     private static String joinSamples(List<Double> samples) {
@@ -107,7 +108,8 @@ public class ExperimentRepository {
                 new PlanStats(rs.getDouble("baseline_db_ms"), rs.getLong("baseline_hit_blocks"),
                         rs.getLong("baseline_read_blocks")),
                 new PlanStats(rs.getDouble("candidate_db_ms"), rs.getLong("candidate_hit_blocks"),
-                        rs.getLong("candidate_read_blocks")));
+                        rs.getLong("candidate_read_blocks")),
+                TimingSource.valueOf(rs.getString("timing_source")));
     }
 
     public void completeExperiment(long experimentId, double overallPercentageChange) {

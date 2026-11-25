@@ -47,6 +47,8 @@ export interface Timing {
   evidence: TimingEvidence;
   baselinePlanStats: PlanStats;
   candidatePlanStats: PlanStats;
+  /** Which clock produced the samples. Absent means the app. */
+  source?: "APP" | "DATABASE";
 }
 
 export interface ExperimentQueryResult {

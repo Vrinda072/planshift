@@ -24,7 +24,10 @@ export function TimingDetail({ timing }: { timing: Timing }) {
   return (
     <div className="samples">
       <p className="samples-title">
-        Every run, timed by the app (includes the driver and reading the rows), 0 to {formatMs(max)}
+        {timing.source === "DATABASE"
+          ? "Every run, as Postgres's own execution time (leaves out the app, driver and network)"
+          : "Every run, timed by the app (includes the driver and reading the rows)"}
+        , 0 to {formatMs(max)}
         {timing.pValue !== null && timing.evidence !== "TOO_FEW_RUNS" && (
           <> · rank-sum p = {timing.pValue < 0.001 ? "<0.001" : timing.pValue.toFixed(3)}</>
         )}
@@ -36,7 +39,7 @@ export function TimingDetail({ timing }: { timing: Timing }) {
         happens here.
       </p>
       <p className="samples-title" style={{ marginTop: 12 }}>
-        Postgres, from one separate EXPLAIN ANALYZE run each (execution time · shared buffers)
+        Postgres, from one more EXPLAIN ANALYZE run each (execution time · shared buffers)
       </p>
       <div className="samples-row"><span className="samples-label">Before</span><span className="mono">{stats(timing.baselinePlanStats)}</span></div>
       <div className="samples-row"><span className="samples-label">After</span><span className="mono">{stats(timing.candidatePlanStats)}</span></div>
