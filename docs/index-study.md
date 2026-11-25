@@ -6,7 +6,8 @@ most of the gain found by testing them all?
 **Short answer.** Yes, but mostly because the choice is easy here. A one-line rule (try the filter column, then the
 filter column followed by the other column the query uses) recovered 99% of the best saving. Picking two at random
 already recovered 90%. A learned ranker was ahead of the rule by a single query out of 19, which is not enough to
-justify it. At this data size, measuring all the candidates takes about four seconds.
+justify it. At this data size, measuring all the candidates takes about four seconds. A
+[second study](hard-study.md) tries joins and several filters, where choosing is harder.
 
 ## Setup
 
@@ -16,8 +17,8 @@ justify it. At this data size, measuring all the candidates takes about four sec
   before any of them were measured. They are listed in [`bench/index_study.py`](../bench/index_study.py).
 - **Candidates:** for each query, by a fixed rule: the filter column, an unrelated column, the ordering column if
   there is one, and the filter column and its partner in both orders. 112 query and index pairs in all, 4.3 per query.
-- **Measurement:** each pair through PlanShift itself, 9 runs per side, twice, in a different random order each
-  pass: 224 experiments. Postgres 16 in Docker on a laptop.
+- **Measurement:** each pair through PlanShift itself, 9 runs per side in the "in blocks" order, twice, in a
+  different random order each pass: 224 experiments. Postgres 16 in Docker on a laptop.
 - **Scoring:** the true value of a pair is the mean of its two passes (on a log scale). A query is *useful* if its
   best candidate saves at least 50% of the time (19 of 26). A pick is *near-best* at 90% of the best saving. A pick
   is *harmful* if it makes the query at least 30% slower. Ties are averaged over every way of breaking them. These
@@ -29,8 +30,9 @@ justify it. At this data size, measuring all the candidates takes about four sec
 |---|---|
 | Two at random | The floor |
 | PlanShift estimator, no history | Rules out indexes whose first column can't serve the query, then ranks by a rule of thumb from the filter's selectivity |
+| PlanShift estimator, with history | The same, but using past runs: all of them from the *other* queries, none from the one being ranked (this and the family split below were added after the first results) |
 | Filter-column rule | The filter column, then (filter column, ordering or second column) |
-| Learned ranker | Ridge regression on features of the index and query (which column leads, filter type, selectivity, whether the order is covered, table size). Tested only on a table, or a whole dataset, that it was not trained on |
+| Learned ranker | Ridge regression on features of the index and query (which column leads, filter type, selectivity, whether the order is covered, table size). Tested only on a table, a whole dataset, or a family of queries (same kind of filter, ordering and counting; six families) that it was not trained on |
 
 ## Results
 
@@ -40,11 +42,18 @@ justify it. At this data size, measuring all the candidates takes about four sec
 |---|---:|---:|---:|---:|
 | Two at random | 90% | 88% | 3.7% | 6.7% |
 | PlanShift estimator, no history | 99% | 95% | 3.8% | 3.8% |
+| PlanShift estimator, history from the other queries | 100% | 100% | 3.8% | 3.8% |
 | Filter-column rule | 99% | 95% | 3.8% | 3.8% |
 | Learned ranker, held-out table | 100% | 100% | 3.8% | 3.8% |
 | Learned ranker, held-out dataset | 100% | 100% | 3.8% | 3.8% |
+| Learned ranker, held-out query family | 100% | 100% | 3.8% | 7.7% |
 
 The last two columns cover all 26 queries.
+
+**What history adds.** It barely changes which indexes get picked, but it makes the predicted number much better:
+against the measured change, the estimator's median error over all pairs fell from 43 percentage points with no
+history to 11 with it. This is generous to the estimator: its history holds every candidate of 25 other queries,
+measured on the same machine and data, which is more than a new user would have.
 
 **Why random does so well.** For a useful query, 2.6 of its 4.4 candidates are near-best on average, so two draws
 rarely miss all of them.
@@ -71,15 +80,10 @@ which matches the noise measured by the [A/A checks](../README.md#how-noisy-are-
 
 - 26 queries, written by one person who knows how B-trees work, is a small sample. A one-query gap between methods
   is not a real difference, and the ranker's features encode that same knowledge.
-- Single-table queries with one filter only: no joins, multiple predicates or grouping, which is where choosing an
-  index gets hard and where the answer could change.
+- Single-table queries with one filter only: no joins or multiple predicates. The [second study](hard-study.md)
+  covers those, and compares against Postgres's own planner using hypothetical indexes (HypoPG), which was the obvious
+  method missing here.
 - One machine, data that fits in memory, and no measurement of what indexes cost on writes.
-- The estimator was tested with no history. How it does once it has history was not tested.
-- A planner-based baseline (hypothetical indexes with HypoPG, ranked by Postgres's own cost) is the obvious method
-  to beat and was not included.
-
-**What would make this worth continuing:** multi-predicate and join queries, with many more candidates per query,
-so that two random picks are no longer likely to succeed; then compare against HypoPG.
 
 ## Reproduce
 

@@ -4,10 +4,10 @@
 
 Does adding that index actually help? PLANSHIFT measures it.
 
-![Demo: pick a table, filter on a column, choose an index, run the experiment and read the before/after result](docs/demo.gif)
+![Demo: run the sample experiment, compare four candidate indexes, then open the best one and see its runs, plans and CREATE INDEX statement](docs/demo.gif)
 
-*564,516 Uber pickups loaded from a CSV. Indexing `lat` takes the filtered
-query from 10.0 ms to 0.28 ms, and the plan shows why.*
+*The sample experiment: one query against four candidate indexes, then the
+runs and plans behind the best one.*
 
 **Live:** [frontend](https://frontend-mauve-two-60.vercel.app) ·
 [backend health](https://planshift-backend.onrender.com/api/health). It's
@@ -17,15 +17,19 @@ indexes and shows what each saves and costs.
 
 ## What has been measured
 
-- **Which indexes to try** ([study](docs/index-study.md), 224 experiments):
-  trying just the filter column, then the filter column plus the query's other
-  column, recovered 99% of the best saving found by testing every candidate.
-  Two random picks already got 90%, so on single-filter queries this is an
-  easy choice, and a learned ranker wasn't worth it.
-- **How much to trust a timing** ([A/A checks](#how-noisy-are-the-timings)):
-  with nothing changed, 11 to 17 of 100 comparisons still moved by more than
-  20%.
-- **Tests:** 58 backend (38 unit, 20 against a real Postgres), 25 frontend and
+- **Run order matters a lot** ([noise checks](#how-noisy-are-the-timings)):
+  where nothing should change, taking turns with and without the index reported
+  a change in 0 of 120 comparisons. Measuring in blocks reported 10 of 120.
+- **Joins and multi-column filters** ([study](docs/hard-study.md), 272
+  measurements): ranking candidates with Postgres's own planner (HypoPG)
+  found a near-best index with its first pick on all 22 queries. A
+  hand-written column rule did no better than random on two picks, because of
+  joins. The data is mostly generated, which flatters the planner.
+- **Single-filter queries** ([study](docs/index-study.md), 224 experiments):
+  trying the filter column, then the filter column plus the other column,
+  recovered 99% of the best saving. Two random picks already got 90%, and a
+  learned ranker wasn't worth it.
+- **Tests:** 66 backend (38 unit, 28 against a real Postgres), 27 frontend and
   one full-stack browser test, all run in CI.
 
 ## What it does
@@ -40,7 +44,7 @@ by side, with each one's size and build time.
 
 ## Example
 
-The Uber pickups data ([fivethirtyeight](https://github.com/fivethirtyeight/uber-tlc-foil-response),
+The numbers here were measured with the "in blocks" order. The Uber pickups data ([fivethirtyeight](https://github.com/fivethirtyeight/uber-tlc-foil-response),
 April 2014) has `date_time`, `lat`, `lon` and `base`. The query filters on
 one `lat` value, tested with two different indexes, three times each (15 runs
 per side):
@@ -58,24 +62,31 @@ with an index on `orders.customer_id` (8.6 ms to 0.26 ms).
 
 ## How noisy are the timings?
 
-An A/A check runs the whole procedure with nothing changed, so every
-difference it finds is noise. Two batches of 10 checks on the built-in
-workload (10 queries, 10 runs per side, 500k orders, Postgres 16 in Docker on
-a laptop):
+Two kinds of comparison where any difference is noise: **A/A** runs of the
+built-in workload with no change at all, and queries given an **unused index**,
+so the plan is identical on both sides. Each was run in both orders, shuffled
+together (10 runs per side, 500k orders, Postgres 16 in Docker on a laptop):
 
-| Nothing changed, 100 comparisons each | Right after a restart | Warmed up |
-|---|---:|---:|
-| Median moved more than 20% | 11 | 17 |
-| Still reported after the rank-sum test | 4 | 12 |
-| Test said the two sides differ (p < 0.05) | 17 | 32 |
+| 60 comparisons per row | Moved more than 20% | Reported as a change | 9 in 10 moved less than |
+|---|---:|---:|---:|
+| A/A, in blocks | 10 | 9 | 30.5% |
+| A/A, taking turns | 2 | 0 | 8.2% |
+| Unused index, in blocks | 5 | 1 | 19.7% |
+| Unused index, taking turns | 0 | 0 | 4.6% |
 
-The test removes some false alarms, not all of them. If runs were independent
-it would call about 5 in 100 different; it called 17 and 32, because whole
-batches of runs speed up or slow down together. So on a setup like this, treat
-a change of 20 to 30% as unproven even when the runs look separated. A plan
-change with a large speedup is far stronger evidence. Run the A/A check on
-your own setup before trusting small differences: it's a button in the UI, or
-`python3 bench/aa_check.py`. The raw numbers are in `bench/results/`.
+So **taking turns is the default**. It builds the index once, and for each run
+without it drops the index inside a transaction that is then rolled back, so
+nothing is rebuilt. It also does an untimed run before every timed one; this
+test doesn't separate which of the two helps. The price is more executions, and
+other readers of the table wait during each run without the index. "In blocks"
+is still available where that matters.
+
+None of this makes the rank-sum test exact. It assumes independent runs, and
+earlier A/A batches in block order showed runs speeding up and slowing down
+together: 11 to 17 of 100 comparisons moved more than 20%. A zero here is zero
+out of 60 on one laptop, not a zero error rate. Check your own setup with the
+**A/A check** button or `python3 bench/mode_check.py`. Raw numbers are in
+`bench/results/`.
 
 ## How it works
 
@@ -84,9 +95,9 @@ your own setup before trusting small differences: it's a button in the UI, or
   passes a threshold (20% by default) and, with 4 or more runs, a Mann-Whitney
   rank-sum test can tell the two sets of timings apart. Every timing is kept
   and shown.
-- Half the "before" runs happen ahead of the "after" runs and half behind
-  them, so a machine that is steadily speeding up or slowing down doesn't
-  favour either side.
+- The two sides take turns, swapping which goes first each round. In the "in
+  blocks" order, half the "before" runs happen ahead of the "after" runs and
+  half behind them, so steady drift doesn't favour either side.
 - Timings are measured by the app, so they include the driver and reading the
   rows. Postgres's own execution time and buffer hits and reads come from a
   separate `EXPLAIN ANALYZE` run and are shown separately.
@@ -96,15 +107,22 @@ your own setup before trusting small differences: it's a button in the UI, or
   steady 2.5 ms for the same query; one candidate even showed +1560%. The
   rank-sum test refused to count it, but those timings weren't usable. Each
   result says which clock produced it.
-- Each side gets an untimed warm-up first. Without it, whichever side runs
-  second inherits a warm cache and looks faster whatever the index does.
-- Experiments run one at a time, from a queue of up to 10, so none is measured
-  while another is changing indexes. This covers a single API instance, which
-  is how it's deployed.
+- Each side is warmed up untimed first. Without that, whichever runs second
+  inherits a warm cache and looks faster whatever the index does.
+- Experiments run one at a time, from a queue of up to 10. A Postgres advisory
+  lock extends that across API instances, such as the old and new one during a
+  deploy, and also holds off CSV imports and data generation, which would
+  replace tables mid-measurement. An instance only gives up on another's
+  experiments when it can prove they are abandoned: the lock is free, or their
+  heartbeats have stopped.
 - Each run creates its own temporary index, records that it owns it in the same
   transaction, and removes exactly that one afterwards, whether it succeeds,
   fails or is cut off by a restart. Indexes that already existed stay in place
   for both sides.
+- Each result gives the `CREATE INDEX` statement to copy. With
+  `ALLOW_KEEP_INDEX=true`, a button also creates that index (and removes it
+  again). It is off by default and on the live demo: there is no sign-in, so
+  anyone could change the database everyone measures against.
 - Plans come from `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`, are parsed into a
   small tree and diffed, which is where "Seq Scan to Bitmap Index Scan" comes from.
 - No raw SQL is accepted. Table and column names are checked against
@@ -121,9 +139,9 @@ your own setup before trusting small differences: it's a button in the UI, or
 
 ![Frontend, API and PostgreSQL](docs/architecture.svg)
 
-No queue, no ORM, no microservices. The backend packages are `experiment`,
-`benchmark`, `queryplan`, `querybuilder`, `schema`, `dataimport`, `datagen`
-and `workload`, under `backend/src/main/java/com/planshift/`.
+No message broker, no ORM, no microservices. The backend packages are `experiment`,
+`benchmark`, `queryplan`, `querybuilder`, `schema`, `dataimport`, `datagen`,
+`workload` and `lock`, under `backend/src/main/java/com/planshift/`.
 
 ## Running it
 
@@ -170,9 +188,10 @@ cd frontend && npm run e2e # needs the stack up; uses your installed Chrome
 ```
 
 The integration tests run against a real Postgres. They cover the experiment
-pipeline, CSV import, filtering on different column types, and isolation: two
-experiments on one table can't overlap, and a failure after index creation
-leaves earlier indexes alone. The browser test imports a CSV, runs an
+pipeline, CSV import, filtering on different column types, kept indexes, and
+isolation: two experiments can't overlap, another instance's run is left alone,
+a failure leaves earlier indexes in place, and hiding an index doesn't stop
+Postgres planning in parallel. The browser test imports a CSV, runs an
 experiment and checks that both plans show up. No test asserts on timing, which
 is too noisy to pass reliably.
 
@@ -185,6 +204,8 @@ is too noisy to pass reliably.
 | `GET /api/experiments` | All past experiments, summary |
 | `GET /api/experiments/{id}` | Full detail incl. plan JSON; poll while `RUNNING` for live phase |
 | `POST /api/experiments` | Starts a baseline-vs-candidate experiment (202, async) |
+| `POST` / `DELETE /api/experiments/{id}/kept-index` | Creates or removes a lasting copy of the tested index (403 unless enabled) |
+| `GET /api/config` | Whether keeping indexes is enabled |
 | `GET /api/regressions` | Every regressed query result, across experiments |
 | `GET /api/schema/tables` | Table/column introspection for the query builder |
 | `POST /api/query-builder/preview` | Validates a query spec and returns the generated SQL |
