@@ -2,7 +2,7 @@
 
 Runs the built-in workload as A/A controls and counts the per-query "changes". Needs the built-in dataset loaded.
 
-    python3 bench/aa_check.py --runs 10 --reps 10 --out bench/results/aa.csv
+    python3 bench/aa_check.py --runs 10 --reps 10 --order BLOCKS --out bench/results/aa.csv
 """
 
 import argparse
@@ -47,12 +47,13 @@ def main():
     parser.add_argument("--runs", type=int, default=10)
     parser.add_argument("--reps", type=int, default=10)
     parser.add_argument("--out", default="bench/results/aa.csv")
+    parser.add_argument("--order", choices=["ALTERNATING", "BLOCKS"], default="ALTERNATING")
     args = parser.parse_args()
 
     api = PlanShift(args.api)
     rows = []
     for n in range(args.runs):
-        experiment = api.run("/api/experiments", {"repetitions": args.reps, "control": True})
+        experiment = api.run("/api/experiments", {"repetitions": args.reps, "control": True, "measurement": args.order})
         rows.extend(rows_of(experiment))
         print(f"run {n + 1}/{args.runs}: median drift {experiment['overallPercentageChange']:+.1f}%", flush=True)
 

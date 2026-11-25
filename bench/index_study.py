@@ -111,7 +111,8 @@ def main():
             for i, (query, columns) in enumerate(shuffled, 1):
                 started = time.time()
                 experiment = api.run("/api/query-builder/run",
-                                     {"spec": spec_of(query), "indexColumns": columns, "repetitions": args.reps})
+                                     {"spec": spec_of(query), "indexColumns": columns, "repetitions": args.reps,
+                                      "measurement": "BLOCKS"})  # the order the published results used
                 result = experiment["queryResults"][0]
                 writer.writerow({
                     "pass": n, "query": query[0], "table": query[1], "index": ",".join(columns),

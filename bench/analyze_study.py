@@ -49,6 +49,58 @@ def estimator_scores(query, options, known):
     return [-known[query[0] + "|" + ",".join(c)]["predicted"] for c in options]
 
 
+def shape(query, columns):
+    """How an index could serve a query, worked out the same way as QueryFeatures.java."""
+    _, _, filter_column, operator, _, order, _, aggregate, _ = query
+    kind = "EQUALITY" if operator == "=" else "RANGE" if operator in (">", "<", ">=", "<=") else "OTHER"
+    if columns[0] == filter_column and kind != "OTHER":
+        access = "FILTER"
+    else:
+        access = "ORDER" if not aggregate and columns[0] == order else "NONE"
+    covers = kind == "EQUALITY" and access == "FILTER" and len(columns) > 1 and columns[1] == order
+    return access, kind, covers
+
+
+def estimate_with_history(query, columns, known, history):
+    """The decision ImpactPredictionService makes, given past runs as (query, columns, percentage change)."""
+    selectivity = known[query[0] + "|" + ",".join(columns)]["selectivity"]
+    mine = shape(query, columns)
+    if mine[0] == "NONE":
+        return 0.0
+
+    def log_selectivity(value):
+        return math.log10(max(value, 1e-6))
+
+    neighbours = [change for other, other_columns, change in history
+                  if shape(other, other_columns) == mine
+                  and abs(log_selectivity(known[other[0] + "|" + ",".join(other_columns)]["selectivity"])
+                          - log_selectivity(selectivity)) <= 0.5]
+    if len(neighbours) >= 3:
+        return statistics.median(neighbours)
+    return -25.0 if mine[0] == "ORDER" else -min(70.0, max(3.0, (1 - selectivity) * 45))
+
+
+def history_of(rows):
+    """Every study run as the estimator would have it on record."""
+    by_id = {q[0]: q for q in QUERIES}
+    return [(by_id[r["query"]], r["index"].split(","), float(r["change_percent"])) for r in rows]
+
+
+def history_scores_for(history, known):
+    """The estimator with every other query's runs on record, and none of the query being ranked."""
+    def scores(query, options, _known):
+        past = [h for h in history if h[0][0] != query[0]]
+        return [-estimate_with_history(query, c, known, past) for c in options]
+
+    return scores
+
+
+def family(query):
+    """Queries of the same shape: kind of filter, whether rows come back ordered, whether they are only counted."""
+    _, _, _, operator, _, order, _, aggregate, _ = query
+    return ("equality" if operator == "=" else "range", bool(order) and not aggregate, bool(aggregate))
+
+
 def filter_rule_scores(query, options, known):
     """First the filter column alone, then the filter column followed by the other column that matters."""
     def score(columns):
@@ -164,10 +216,12 @@ def main():
     methods = [
         ("Two at random", random_scores),
         ("PlanShift estimator, no history", estimator_scores),
+        ("PlanShift estimator, history from the other queries", history_scores_for(history_of(rows), known)),
         ("Filter-column rule", filter_rule_scores),
         ("Learned ranker, held-out table", ranker_scores_for(lambda q: q[1], truth, known)),
         ("Learned ranker, held-out dataset",
          ranker_scores_for(lambda q: "uber" if q[1] == "uber_pickups" else "shop", truth, known)),
+        ("Learned ranker, held-out query family", ranker_scores_for(family, truth, known)),
     ]
 
     print(f"{len(QUERIES)} queries, {len(truth)} query/index pairs, {len(passes)} passes, {len(rows)} experiments\n")
@@ -199,6 +253,22 @@ def main():
         print(f"- the index that won pass {a} was still near-best in pass {b} for {agree} of {total} useful queries")
         print(f"- difference in saving for the same pair: median {gaps[len(gaps) // 2]:.1%} points, "
               f"90th percentile {gaps[int(len(gaps) * 0.9)]:.1%}")
+
+    # How close the estimator's numbers are, not just how it ranks: error in percentage points of time saved.
+    history = history_of(rows)
+    errors = {"no history": [], "history from the other queries": []}
+    for query in QUERIES:
+        past = [h for h in history if h[0][0] != query[0]]
+        for columns in candidates(query[1], query[2], query[5]):
+            actual = -100 * saved(truth[(query[0], ",".join(columns))])
+            errors["no history"].append(
+                abs(known[query[0] + "|" + ",".join(columns)]["predicted"] - actual))
+            errors["history from the other queries"].append(
+                abs(estimate_with_history(query, columns, known, past) - actual))
+    print("\nEstimator's error against the measured change, median over all pairs (percentage points):")
+    for name, values in errors.items():
+        print(f"- {name}: {statistics.median(values):.0f}")
+    print(f"Query families held out in turn: {len({family(q) for q in QUERIES})}")
 
     unchanged = [r for r in rows if r["plan_changed"] == "False"]
     print(f"\nRuns where the plan did not change: {len(unchanged)}; of those, "

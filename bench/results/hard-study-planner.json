@@ -1,0 +1,682 @@
+{
+ "H1|orders(customer_id)": {
+  "cost": 27.53,
+  "bytes": 14508032,
+  "seconds": 0.0736233749994426
+ },
+ "H1|orders(status)": {
+  "cost": 7702.17,
+  "bytes": 15237120,
+  "seconds": 0.04932612500124378
+ },
+ "H1|orders(customer_id,status)": {
+  "cost": 8.07,
+  "bytes": 21045248,
+  "seconds": 0.04820737499903771
+ },
+ "H1|orders(status,customer_id)": {
+  "cost": 8.07,
+  "bytes": 21045248,
+  "seconds": 0.044491583998024
+ },
+ "H2|orders(status)": {
+  "cost": 7703.06,
+  "bytes": 15237120,
+  "seconds": 0.0444166250017588
+ },
+ "H2|orders(order_date)": {
+  "cost": 5329.17,
+  "bytes": 14508032,
+  "seconds": 0.049249957999563776
+ },
+ "H2|orders(status,order_date)": {
+  "cost": 4647.85,
+  "bytes": 21045248,
+  "seconds": 0.04520891699939966
+ },
+ "H2|orders(order_date,status)": {
+  "cost": 5183.87,
+  "bytes": 21045248,
+  "seconds": 0.04452112499711802
+ },
+ "H3|orders(status)": {
+  "cost": 7675.49,
+  "bytes": 15237120,
+  "seconds": 0.04448320800293004
+ },
+ "H3|orders(total_amount)": {
+  "cost": 4995.16,
+  "bytes": 13058048,
+  "seconds": 0.047911541998473695
+ },
+ "H3|orders(status,total_amount)": {
+  "cost": 2807.83,
+  "bytes": 19595264,
+  "seconds": 0.05141175000244402
+ },
+ "H3|orders(total_amount,status)": {
+  "cost": 2989.31,
+  "bytes": 19595264,
+  "seconds": 0.047566917000949616
+ },
+ "H4|orders(order_date)": {
+  "cost": 3063.33,
+  "bytes": 14508032,
+  "seconds": 0.04997579200062319
+ },
+ "H4|orders(total_amount)": {
+  "cost": 5516.89,
+  "bytes": 13058048,
+  "seconds": 0.045121084000129486
+ },
+ "H4|orders(order_date,total_amount)": {
+  "cost": 307.91,
+  "bytes": 18866176,
+  "seconds": 0.049208042000827845
+ },
+ "H4|orders(total_amount,order_date)": {
+  "cost": 1052.57,
+  "bytes": 18866176,
+  "seconds": 0.04550370899960399
+ },
+ "H5|orders(status)": {
+  "cost": 7818.94,
+  "bytes": 15237120,
+  "seconds": 0.14036920800208463
+ },
+ "H5|orders(order_date)": {
+  "cost": 5424.68,
+  "bytes": 14508032,
+  "seconds": 0.056265584000357194
+ },
+ "H5|orders(total_amount)": {
+  "cost": 192.88,
+  "bytes": 13058048,
+  "seconds": 0.05415641700164997
+ },
+ "H5|orders(status,order_date)": {
+  "cost": 4751.37,
+  "bytes": 21045248,
+  "seconds": 0.051788583001325605
+ },
+ "H5|orders(status,total_amount)": {
+  "cost": 113.93,
+  "bytes": 19595264,
+  "seconds": 0.052625791999162175
+ },
+ "H5|orders(order_date,status)": {
+  "cost": 5287.16,
+  "bytes": 21045248,
+  "seconds": 0.05251279100048123
+ },
+ "H5|orders(order_date,total_amount)": {
+  "cost": 5516.68,
+  "bytes": 18866176,
+  "seconds": 0.050693665998551296
+ },
+ "H5|orders(total_amount,status)": {
+  "cost": 181.73,
+  "bytes": 19595264,
+  "seconds": 0.05470949999653385
+ },
+ "H5|orders(total_amount,order_date)": {
+  "cost": 175.32,
+  "bytes": 18866176,
+  "seconds": 0.14500487500117742
+ },
+ "H5|orders(status,order_date,total_amount)": {
+  "cost": 4767.37,
+  "bytes": 25395200,
+  "seconds": 0.10531070900105988
+ },
+ "H5|orders(status,total_amount,order_date)": {
+  "cost": 70.49,
+  "bytes": 25395200,
+  "seconds": 0.06962537499930477
+ },
+ "H5|orders(order_date,status,total_amount)": {
+  "cost": 5379.16,
+  "bytes": 25395200,
+  "seconds": 0.05855445799898007
+ },
+ "H5|orders(order_date,total_amount,status)": {
+  "cost": 5379.16,
+  "bytes": 25395200,
+  "seconds": 0.047656582999479724
+ },
+ "H5|orders(total_amount,status,order_date)": {
+  "cost": 154.67,
+  "bytes": 25395200,
+  "seconds": 0.05396950000067591
+ },
+ "H5|orders(total_amount,order_date,status)": {
+  "cost": 154.67,
+  "bytes": 25395200,
+  "seconds": 0.05345866700008628
+ },
+ "H6|orders(status)": {
+  "cost": 8706.48,
+  "bytes": 15237120,
+  "seconds": 0.05349137500161305
+ },
+ "H6|orders(total_amount)": {
+  "cost": 4620.64,
+  "bytes": 13058048,
+  "seconds": 0.0557082499981334
+ },
+ "H6|orders(order_date)": {
+  "cost": 1034.4,
+  "bytes": 14508032,
+  "seconds": 0.05201058299644501
+ },
+ "H6|orders(status,total_amount)": {
+  "cost": 3461.75,
+  "bytes": 19595264,
+  "seconds": 0.0495075420003559
+ },
+ "H6|orders(status,order_date)": {
+  "cost": 798.38,
+  "bytes": 21045248,
+  "seconds": 0.0502219169975433
+ },
+ "H6|orders(total_amount,status)": {
+  "cost": 3511.14,
+  "bytes": 19595264,
+  "seconds": 0.0467285830018227
+ },
+ "H6|orders(total_amount,order_date)": {
+  "cost": 4640.64,
+  "bytes": 18866176,
+  "seconds": 0.04474695899989456
+ },
+ "H6|orders(order_date,status)": {
+  "cost": 1035.47,
+  "bytes": 21045248,
+  "seconds": 0.05117945900201448
+ },
+ "H6|orders(order_date,total_amount)": {
+  "cost": 674.29,
+  "bytes": 18866176,
+  "seconds": 0.047286707998864586
+ },
+ "H6|orders(status,total_amount,order_date)": {
+  "cost": 3469.75,
+  "bytes": 25395200,
+  "seconds": 0.046137833000102546
+ },
+ "H6|orders(status,order_date,total_amount)": {
+  "cost": 410.91,
+  "bytes": 25395200,
+  "seconds": 0.050024457999825245
+ },
+ "H6|orders(total_amount,status,order_date)": {
+  "cost": 3531.14,
+  "bytes": 25395200,
+  "seconds": 0.048828333001438295
+ },
+ "H6|orders(total_amount,order_date,status)": {
+  "cost": 3531.14,
+  "bytes": 25395200,
+  "seconds": 0.05101683400062029
+ },
+ "H6|orders(order_date,status,total_amount)": {
+  "cost": 678.98,
+  "bytes": 25395200,
+  "seconds": 0.04943966700011515
+ },
+ "H6|orders(order_date,total_amount,status)": {
+  "cost": 678.98,
+  "bytes": 25395200,
+  "seconds": 0.04561212500266265
+ },
+ "H7|order_items(quantity)": {
+  "cost": 2404.41,
+  "bytes": 34897920,
+  "seconds": 0.0633962909996626
+ },
+ "H7|order_items(product_id,quantity)": {
+  "cost": 572.77,
+  "bytes": 52346880,
+  "seconds": 0.05593520799811813
+ },
+ "H7|order_items(quantity,product_id)": {
+  "cost": 572.77,
+  "bytes": 52346880,
+  "seconds": 0.054889667000679765
+ },
+ "H8|order_items(quantity)": {
+  "cost": 22102.3,
+  "bytes": 34897920,
+  "seconds": 0.04818633399918326
+ },
+ "H8|order_items(unit_price)": {
+  "cost": 14643.0,
+  "bytes": 39256064,
+  "seconds": 0.04859179199775099
+ },
+ "H8|order_items(quantity,unit_price)": {
+  "cost": 13288.91,
+  "bytes": 47980544,
+  "seconds": 0.050761333000991726
+ },
+ "H8|order_items(unit_price,quantity)": {
+  "cost": 14504.95,
+  "bytes": 47980544,
+  "seconds": 0.04795529200055171
+ },
+ "H9|order_items(quantity)": {
+  "cost": 21127.43,
+  "bytes": 34897920,
+  "seconds": 0.04920758300067973
+ },
+ "H9|order_items(unit_price)": {
+  "cost": 12434.28,
+  "bytes": 39256064,
+  "seconds": 0.04921983299936983
+ },
+ "H9|order_items(quantity,unit_price)": {
+  "cost": 92.88,
+  "bytes": 47980544,
+  "seconds": 0.0545124170021154
+ },
+ "H9|order_items(unit_price,quantity)": {
+  "cost": 278.05,
+  "bytes": 47980544,
+  "seconds": 0.04942299999675015
+ },
+ "H10|customers(city)": {
+  "cost": 1559.67,
+  "bytes": 2899968,
+  "seconds": 0.04833774999860907
+ },
+ "H10|customers(signup_date)": {
+  "cost": 2181.1,
+  "bytes": 2318336,
+  "seconds": 0.055882291999296285
+ },
+ "H10|customers(city,signup_date)": {
+  "cost": 1457.7,
+  "bytes": 3481600,
+  "seconds": 0.04944554100075038
+ },
+ "H10|customers(signup_date,city)": {
+  "cost": 2100.76,
+  "bytes": 3481600,
+  "seconds": 0.04842720799933886
+ },
+ "H11|customers(country)": {
+  "cost": 2000.12,
+  "bytes": 2465792,
+  "seconds": 0.0486580420001701
+ },
+ "H11|customers(last_name)": {
+  "cost": 1437.0,
+  "bytes": 2752512,
+  "seconds": 0.04735691600217251
+ },
+ "H11|customers(country,last_name)": {
+  "cost": 1149.88,
+  "bytes": 3481600,
+  "seconds": 0.048989875002007466
+ },
+ "H11|customers(last_name,country)": {
+  "cost": 1149.88,
+  "bytes": 3481600,
+  "seconds": 0.05016475000229548
+ },
+ "H12|customers(first_name)": {
+  "cost": 1436.97,
+  "bytes": 2605056,
+  "seconds": 0.05106704200079548
+ },
+ "H12|customers(city)": {
+  "cost": 1560.52,
+  "bytes": 2899968,
+  "seconds": 0.049063667000154965
+ },
+ "H12|customers(signup_date)": {
+  "cost": 377.52,
+  "bytes": 2318336,
+  "seconds": 0.048025332998804515
+ },
+ "H12|customers(first_name,city)": {
+  "cost": 595.37,
+  "bytes": 3768320,
+  "seconds": 0.04669587500029593
+ },
+ "H12|customers(first_name,signup_date)": {
+  "cost": 241.89,
+  "bytes": 3186688,
+  "seconds": 0.046709958998690126
+ },
+ "H12|customers(city,first_name)": {
+  "cost": 595.37,
+  "bytes": 3768320,
+  "seconds": 0.05025066699818126
+ },
+ "H12|customers(city,signup_date)": {
+  "cost": 246.73,
+  "bytes": 3481600,
+  "seconds": 0.048032165999757126
+ },
+ "H12|customers(signup_date,first_name)": {
+  "cost": 342.22,
+  "bytes": 3186688,
+  "seconds": 0.045984250002220506
+ },
+ "H12|customers(signup_date,city)": {
+  "cost": 350.49,
+  "bytes": 3481600,
+  "seconds": 0.046049166998272995
+ },
+ "H12|customers(first_name,city,signup_date)": {
+  "cost": 37.52,
+  "bytes": 4349952,
+  "seconds": 0.05069691699827672
+ },
+ "H12|customers(first_name,signup_date,city)": {
+  "cost": 41.83,
+  "bytes": 4349952,
+  "seconds": 0.04561725000166916
+ },
+ "H12|customers(city,first_name,signup_date)": {
+  "cost": 37.43,
+  "bytes": 4349952,
+  "seconds": 0.0513297910001711
+ },
+ "H12|customers(city,signup_date,first_name)": {
+  "cost": 46.24,
+  "bytes": 4349952,
+  "seconds": 0.048754625000583474
+ },
+ "H12|customers(signup_date,first_name,city)": {
+  "cost": 177.8,
+  "bytes": 4349952,
+  "seconds": 0.050811749999411404
+ },
+ "H12|customers(signup_date,city,first_name)": {
+  "cost": 177.8,
+  "bytes": 4349952,
+  "seconds": 0.04651770800046506
+ },
+ "H13|uber_pickups(base)": {
+  "cost": 461.07,
+  "bytes": 15564800,
+  "seconds": 0.04955366699869046
+ },
+ "H13|uber_pickups(lat)": {
+  "cost": 5182.23,
+  "bytes": 16384000,
+  "seconds": 0.046655999998620246
+ },
+ "H13|uber_pickups(base,lat)": {
+  "cost": 128.43,
+  "bytes": 22118400,
+  "seconds": 0.047115375000430504
+ },
+ "H13|uber_pickups(lat,base)": {
+  "cost": 362.02,
+  "bytes": 22118400,
+  "seconds": 0.050092958997993264
+ },
+ "H14|uber_pickups(lat)": {
+  "cost": 5940.33,
+  "bytes": 16384000,
+  "seconds": 0.047892916001728736
+ },
+ "H14|uber_pickups(lon)": {
+  "cost": 5921.68,
+  "bytes": 16384000,
+  "seconds": 0.05082054200101993
+ },
+ "H14|uber_pickups(lat,lon)": {
+  "cost": 892.63,
+  "bytes": 22937600,
+  "seconds": 0.04717579100179137
+ },
+ "H14|uber_pickups(lon,lat)": {
+  "cost": 1090.1,
+  "bytes": 22937600,
+  "seconds": 0.05053316699923016
+ },
+ "H15|uber_pickups(base)": {
+  "cost": 1564.95,
+  "bytes": 15564800,
+  "seconds": 0.04872337499909918
+ },
+ "H15|uber_pickups(lon)": {
+  "cost": 5069.56,
+  "bytes": 16384000,
+  "seconds": 0.046860291997290915
+ },
+ "H15|uber_pickups(base,lon)": {
+  "cost": 20.51,
+  "bytes": 22118400,
+  "seconds": 0.047925082999427104
+ },
+ "H15|uber_pickups(lon,base)": {
+  "cost": 116.97,
+  "bytes": 22118400,
+  "seconds": 0.05083362499863142
+ },
+ "J1|customers(last_name)": {
+  "cost": 9711.98,
+  "bytes": 2752512,
+  "seconds": 0.04864704099964001
+ },
+ "J1|customers(city)": {
+  "cost": 9812.65,
+  "bytes": 2899968,
+  "seconds": 0.04497704200184671
+ },
+ "J1|customers(last_name,city)": {
+  "cost": 8894.81,
+  "bytes": 3915776,
+  "seconds": 0.04446358400309691
+ },
+ "J1|customers(city,last_name)": {
+  "cost": 8894.81,
+  "bytes": 3915776,
+  "seconds": 0.046766542000113986
+ },
+ "J1|orders(customer_id)": {
+  "cost": 6592.07,
+  "bytes": 14508032,
+  "seconds": 0.04432174999965355
+ },
+ "J2|orders(status)": {
+  "cost": 10090.93,
+  "bytes": 15237120,
+  "seconds": 0.04786820799927227
+ },
+ "J2|orders(total_amount)": {
+  "cost": 8465.6,
+  "bytes": 13058048,
+  "seconds": 0.04887958299877937
+ },
+ "J2|orders(status,total_amount)": {
+  "cost": 6319.15,
+  "bytes": 19595264,
+  "seconds": 0.047273792002670234
+ },
+ "J2|orders(total_amount,status)": {
+  "cost": 6403.8,
+  "bytes": 19595264,
+  "seconds": 0.045384083001408726
+ },
+ "J3|customers(country)": {
+  "cost": 9916.24,
+  "bytes": 2465792,
+  "seconds": 0.0524773750003078
+ },
+ "J3|orders(customer_id)": {
+  "cost": 10284.51,
+  "bytes": 14508032,
+  "seconds": 0.04782775000057882
+ },
+ "J3|orders(order_date)": {
+  "cost": 6576.2,
+  "bytes": 14508032,
+  "seconds": 0.06349191600020276
+ },
+ "J3|orders(customer_id,order_date)": {
+  "cost": 10284.51,
+  "bytes": 20316160,
+  "seconds": 0.0625041669991333
+ },
+ "J3|orders(order_date,customer_id)": {
+  "cost": 6588.2,
+  "bytes": 20316160,
+  "seconds": 0.0465427080016525
+ },
+ "J4|customers(signup_date)": {
+  "cost": 9812.55,
+  "bytes": 2318336,
+  "seconds": 0.043681082999682985
+ },
+ "J4|orders(customer_id)": {
+  "cost": 10430.35,
+  "bytes": 14508032,
+  "seconds": 0.04533020900271367
+ },
+ "J4|orders(status)": {
+  "cost": 10188.23,
+  "bytes": 15237120,
+  "seconds": 0.05279250000239699
+ },
+ "J4|orders(customer_id,status)": {
+  "cost": 8865.06,
+  "bytes": 21045248,
+  "seconds": 0.04649004199745832
+ },
+ "J4|orders(status,customer_id)": {
+  "cost": 8865.06,
+  "bytes": 21045248,
+  "seconds": 0.04290079199927277
+ },
+ "J5|customers(city)": {
+  "cost": 10138.21,
+  "bytes": 2899968,
+  "seconds": 0.047697875001176726
+ },
+ "J5|orders(customer_id)": {
+  "cost": 10668.45,
+  "bytes": 14508032,
+  "seconds": 0.04839708300278289
+ },
+ "J5|orders(order_date)": {
+  "cost": 46.89,
+  "bytes": 14508032,
+  "seconds": 0.05149091700150166
+ },
+ "J5|orders(customer_id,order_date)": {
+  "cost": 10668.45,
+  "bytes": 20316160,
+  "seconds": 0.04771887499737204
+ },
+ "J5|orders(order_date,customer_id)": {
+  "cost": 48.52,
+  "bytes": 20316160,
+  "seconds": 0.04511224999805563
+ },
+ "J6|customers(country)": {
+  "cost": 9918.37,
+  "bytes": 2465792,
+  "seconds": 0.04554916699999012
+ },
+ "J6|orders(customer_id)": {
+  "cost": 10287.99,
+  "bytes": 14508032,
+  "seconds": 0.04545612500078278
+ },
+ "J6|orders(total_amount)": {
+  "cost": 6732.12,
+  "bytes": 13058048,
+  "seconds": 0.05068274999939604
+ },
+ "J6|orders(customer_id,total_amount)": {
+  "cost": 10287.99,
+  "bytes": 18866176,
+  "seconds": 0.0463530000015453
+ },
+ "J6|orders(total_amount,customer_id)": {
+  "cost": 6748.12,
+  "bytes": 18866176,
+  "seconds": 0.04910725000081584
+ },
+ "J7|products(category)": {
+  "cost": 23319.54,
+  "bytes": 65536,
+  "seconds": 0.05155158399793436
+ },
+ "J7|order_items(quantity)": {
+  "cost": 21339.9,
+  "bytes": 34897920,
+  "seconds": 0.044804249999288004
+ },
+ "J7|order_items(unit_price)": {
+  "cost": 18077.92,
+  "bytes": 39256064,
+  "seconds": 0.045998917001270456
+ },
+ "J7|order_items(product_id,quantity)": {
+  "cost": 23336.3,
+  "bytes": 52346880,
+  "seconds": 0.04672550000032061
+ },
+ "J7|order_items(product_id,unit_price)": {
+  "cost": 23336.3,
+  "bytes": 56705024,
+  "seconds": 0.04455570799837005
+ },
+ "J7|order_items(quantity,product_id)": {
+  "cost": 23007.9,
+  "bytes": 52346880,
+  "seconds": 0.04761058300209697
+ },
+ "J7|order_items(quantity,unit_price)": {
+  "cost": 13903.45,
+  "bytes": 47980544,
+  "seconds": 0.0542249999998603
+ },
+ "J7|order_items(unit_price,product_id)": {
+  "cost": 18945.92,
+  "bytes": 56705024,
+  "seconds": 0.04710587500085239
+ },
+ "J7|order_items(unit_price,quantity)": {
+  "cost": 17048.48,
+  "bytes": 47980544,
+  "seconds": 0.04821579100098461
+ },
+ "J7|order_items(product_id,quantity,unit_price)": {
+  "cost": 12086.31,
+  "bytes": 65429504,
+  "seconds": 0.0447784589996445
+ },
+ "J7|order_items(product_id,unit_price,quantity)": {
+  "cost": 12244.91,
+  "bytes": 65429504,
+  "seconds": 0.04632083400065312
+ },
+ "J7|order_items(quantity,product_id,unit_price)": {
+  "cost": 11854.61,
+  "bytes": 65429504,
+  "seconds": 0.046723084000404924
+ },
+ "J7|order_items(quantity,unit_price,product_id)": {
+  "cost": 14075.45,
+  "bytes": 65429504,
+  "seconds": 0.049159874997712905
+ },
+ "J7|order_items(unit_price,product_id,quantity)": {
+  "cost": 17916.48,
+  "bytes": 65429504,
+  "seconds": 0.04835087500032387
+ },
+ "J7|order_items(unit_price,quantity,product_id)": {
+  "cost": 17916.48,
+  "bytes": 65429504,
+  "seconds": 0.046794459001830546
+ }
+}
