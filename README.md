@@ -25,27 +25,54 @@ a built-in 10-query workload or on any table, including your own CSV.
 
 The Uber pickups data ([fivethirtyeight](https://github.com/fivethirtyeight/uber-tlc-foil-response),
 April 2014) has `date_time`, `lat`, `lon` and `base`. The query filters on
-one `lat` value, tested with two different indexes (median of 7 runs):
+one `lat` value, tested with two different indexes, three times each (15 runs
+per side):
 
-| Index | Before | After | Change | Plan |
-|---|---:|---:|---:|---|
-| `lat` | 7.12 ms | 0.51 ms | -92.9% | Seq Scan to Bitmap Index Scan |
-| `(base, lat)` | 9.52 ms | 7.19 ms | -24.5% | no change |
+| Index | Change in median, three tries | Plan |
+|---|---|---|
+| `lat` | -93.5%, -95.5%, -96.0% | Seq Scan to Bitmap Index Scan |
+| `(base, lat)` | -0.1%, -3.9%, -17.9% | no change |
 
 Same column, very different result: a composite index is ordered, so
-`(base, lat)` is of little use to a filter that doesn't start with `base`.
-With the same plan on both sides, the new index can't explain that 24.5%,
-although it crosses the 20% threshold. I haven't measured how much timings
-vary between identical runs, so read small differences with care. On the built-in
-e-commerce data (500k orders), the order-history query improves 97% with an
-index on `orders.customer_id` (8.6 ms to 0.26 ms), while queries that don't
-filter on that column stayed inside the 20% threshold.
+`(base, lat)` is of little use to a filter that doesn't start with `base`. Its
+plan never changes, so none of those differences come from the index. On the
+built-in e-commerce data (500k orders), the order-history query improves 97%
+with an index on `orders.customer_id` (8.6 ms to 0.26 ms).
+
+## How noisy are the timings?
+
+An A/A check runs the whole procedure with nothing changed, so every
+difference it finds is noise. Two batches of 10 checks on the built-in
+workload (10 queries, 10 runs per side, 500k orders, Postgres 16 in Docker on
+a laptop):
+
+| Nothing changed, 100 comparisons each | Right after a restart | Warmed up |
+|---|---:|---:|
+| Median moved more than 20% | 11 | 17 |
+| Still reported after the rank-sum test | 4 | 12 |
+| Test said the two sides differ (p < 0.05) | 17 | 32 |
+
+The test removes some false alarms, not all of them. If runs were independent
+it would call about 5 in 100 different; it called 17 and 32, because whole
+batches of runs speed up or slow down together. So on a setup like this, treat
+a change of 20 to 30% as unproven even when the runs look separated. A plan
+change with a large speedup is far stronger evidence. Run the A/A check on
+your own setup before trusting small differences: it's a button in the UI, or
+`python3 bench/aa_check.py`. The raw numbers are in `bench/results/`.
 
 ## How it works
 
-- Each query runs N times per side and the **median** is used, since one
-  timing is mostly noise. The change is `(after - before) / before`; beyond
-  a threshold (20% by default) it counts as improved or regressed.
+- Each query runs N times per side and the **median** is used. The change is
+  `(after - before) / before`. It counts as improved or regressed only if it
+  passes a threshold (20% by default) and, with 4 or more runs, a Mann-Whitney
+  rank-sum test can tell the two sets of timings apart. Every timing is kept
+  and shown.
+- Half the "before" runs happen ahead of the "after" runs and half behind
+  them, so a machine that is steadily speeding up or slowing down doesn't
+  favour either side.
+- Timings are measured by the app, so they include the driver and reading the
+  rows. Postgres's own execution time and buffer hits and reads come from a
+  separate `EXPLAIN ANALYZE` run and are shown separately.
 - Each side gets an untimed warm-up first. Without it, whichever side runs
   second inherits a warm cache and looks faster whatever the index does.
 - Experiments run one at a time, from a queue of up to 10, so none is measured
@@ -109,8 +136,8 @@ cd frontend && npm install && npm run dev  # :5173
 ## Tests
 
 ```bash
-cd backend && mvn verify   # 43 tests; integration tests use Testcontainers, so Docker must be running
-cd frontend && npm test    # 18 tests
+cd backend && mvn verify   # 51 tests; integration tests use Testcontainers, so Docker must be running
+cd frontend && npm test    # 21 tests
 ```
 
 The integration tests run against a real Postgres: the full experiment
