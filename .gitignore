@@ -35,3 +35,7 @@ docker-compose.override.yml
 
 # --- Logs ---
 *.log
+
+# --- Playwright ---
+test-results/
+playwright-report/
