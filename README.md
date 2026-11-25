@@ -25,7 +25,7 @@ indexes and shows what each saves and costs.
 - **How much to trust a timing** ([A/A checks](#how-noisy-are-the-timings)):
   with nothing changed, 11 to 17 of 100 comparisons still moved by more than
   20%.
-- **Tests:** 57 backend (38 unit, 19 against a real Postgres), 25 frontend and
+- **Tests:** 58 backend (38 unit, 20 against a real Postgres), 25 frontend and
   one full-stack browser test, all run in CI.
 
 ## What it does
@@ -90,6 +90,12 @@ your own setup before trusting small differences: it's a button in the UI, or
 - Timings are measured by the app, so they include the driver and reading the
   rows. Postgres's own execution time and buffer hits and reads come from a
   separate `EXPLAIN ANALYZE` run and are shown separately.
+- The live demo times runs with Postgres's own clock instead
+  (`TIMING_SOURCE=database`). On the free host, app-side timings jumped by about
+  90 ms at random, probably from CPU throttling, while Postgres reported a
+  steady 2.5 ms for the same query; one candidate even showed +1560%. The
+  rank-sum test refused to count it, but those timings weren't usable. Each
+  result says which clock produced it.
 - Each side gets an untimed warm-up first. Without it, whichever side runs
   second inherits a warm cache and looks faster whatever the index does.
 - Experiments run one at a time, from a queue of up to 10, so none is measured
