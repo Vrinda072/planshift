@@ -43,8 +43,9 @@ export function ImportDataPanel({ onImported }: { onImported: (tableName: string
       </p>
       <div className="form-row">
         <div className="form-field">
-          <label>CSV file</label>
+          <label htmlFor="import-file">CSV file</label>
           <input
+            id="import-file"
             type="file"
             accept=".csv,text/csv"
             onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
@@ -52,8 +53,8 @@ export function ImportDataPanel({ onImported }: { onImported: (tableName: string
           />
         </div>
         <div className="form-field">
-          <label>Table name</label>
-          <input type="text" value={tableName} onChange={(e) => setTableName(e.target.value)} style={{ width: 160 }} />
+          <label htmlFor="import-table">Table name</label>
+          <input id="import-table" type="text" value={tableName} onChange={(e) => setTableName(e.target.value)} style={{ width: 160 }} />
         </div>
         <button className="btn" onClick={doImport} disabled={importing || !file}>
           {importing ? "Importing..." : "Import"}

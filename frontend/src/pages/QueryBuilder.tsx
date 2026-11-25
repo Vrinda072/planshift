@@ -8,6 +8,7 @@ import { CopyButton } from "../components/CopyButton";
 import { ImportDataPanel } from "../components/ImportDataPanel";
 import { PageHeader } from "../components/PageHeader";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { candidateIndexes, startCandidateRun } from "../lib/candidates";
 import { changeClassName, formatChangeText } from "../format";
 
 const OPERATORS = ["=", "!=", ">", "<", ">=", "<=", "LIKE"];
@@ -134,6 +135,20 @@ export function QueryBuilder() {
     }
   };
 
+  const toTry = candidateIndexes(spec, indexColumns);
+
+  const compareCandidates = async () => {
+    setRunning(true);
+    setActionError(null);
+    try {
+      navigate(await startCandidateRun(spec, toTry, repetitions, thresholdPercent / 100));
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setRunning(false);
+    }
+  };
+
   const toggleSelectColumn = (col: string) => {
     setSelectColumns((prev) => (prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]));
   };
@@ -253,8 +268,8 @@ export function QueryBuilder() {
                   </div>
                   <div className="form-row">
                     <div className="form-field">
-                      <label>Column</label>
-                      <select value={filterColumn} onChange={(e) => setFilterColumn(e.target.value)}>
+                      <label htmlFor="filter-column">Column</label>
+                      <select id="filter-column" value={filterColumn} onChange={(e) => setFilterColumn(e.target.value)}>
                         <option value="">None</option>
                         {columns.map((c) => <option key={c.columnName} value={c.columnName}>{c.columnName}</option>)}
                       </select>
@@ -262,14 +277,14 @@ export function QueryBuilder() {
                     {filterColumn && (
                       <>
                         <div className="form-field">
-                          <label>Operator</label>
-                          <select value={filterOperator} onChange={(e) => setFilterOperator(e.target.value)}>
+                          <label htmlFor="filter-operator">Operator</label>
+                          <select id="filter-operator" value={filterOperator} onChange={(e) => setFilterOperator(e.target.value)}>
                             {OPERATORS.map((op) => <option key={op} value={op}>{op}</option>)}
                           </select>
                         </div>
                         <div className="form-field">
-                          <label>Value</label>
-                          <input type="text" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} style={{ width: 160 }} />
+                          <label htmlFor="filter-value">Value</label>
+                          <input id="filter-value" type="text" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} style={{ width: 160 }} />
                         </div>
                       </>
                     )}
@@ -383,6 +398,14 @@ export function QueryBuilder() {
                     <button className="btn btn-primary" onClick={() => runExperiment()} disabled={running}>
                       {running ? "Starting..." : "Run experiment"}
                     </button>
+                    <button
+                      className="btn"
+                      onClick={compareCandidates}
+                      disabled={running || toTry.length < 2}
+                      title="Measure each of these on its own and compare them"
+                    >
+                      {toTry.length < 2 ? "Compare several indexes" : `Compare ${toTry.length} indexes`}
+                    </button>
                     <button className="btn" onClick={predictImpact} disabled={predicting}>
                       {predicting ? "Estimating..." : "Estimate impact first"}
                     </button>
@@ -395,6 +418,10 @@ export function QueryBuilder() {
                       A/A check
                     </button>
                   </div>
+
+                  {toTry.length < 2 && (
+                    <p className="field-hint">To compare indexes, add an ORDER BY on another column, or pick index columns.</p>
+                  )}
 
                   {actionError && <div className="error-banner" style={{ marginTop: 12, marginBottom: 0 }}>{actionError}</div>}
 

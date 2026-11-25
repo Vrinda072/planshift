@@ -1333,3 +1333,5 @@ input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--ink); cu
   border-radius: 50%;
   opacity: 0.75;
 }
+
+.panel + .panel-note { margin-top: 12px; }

@@ -16,6 +16,7 @@ function crumbsFor(pathname: string): { label: string; to?: string }[] {
   if (!first) return [{ label: "Overview" }];
   const section = { label: SECTIONS[first] ?? first, to: `/${first}` };
   if (first === "compare") return [{ label: "Experiments", to: "/experiments" }, { label: "Compare" }];
+  if (first === "candidates") return [{ label: "Experiments", to: "/experiments" }, { label: "Candidate indexes" }];
   if (second) return [section, { label: first === "experiments" ? `#${second}` : second }];
   return [{ label: section.label }];
 }

@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Nav } from "./components/Nav";
 import { CommandPalette } from "./components/CommandPalette";
 import { Topbar } from "./components/Topbar";
+import { Candidates } from "./pages/Candidates";
 import { Compare } from "./pages/Compare";
 import { NotFound } from "./pages/NotFound";
 import { Overview } from "./pages/Overview";
@@ -27,6 +28,7 @@ function AnimatedRoutes() {
         <Route path="/query-builder" element={<QueryBuilder />} />
         <Route path="/regressions" element={<Regressions />} />
         <Route path="/compare" element={<Compare />} />
+        <Route path="/candidates" element={<Candidates />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </div>

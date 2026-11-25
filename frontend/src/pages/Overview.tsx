@@ -9,6 +9,7 @@ import { RunBars } from "../components/RunBars";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { STATUS_LABEL } from "../lib/status";
+import { SAMPLE_QUERY, candidateIndexes, startCandidateRun } from "../lib/candidates";
 import { indexLabel, isControl, typeLabel } from "../lib/index";
 
 const TREND_RUNS = 12;
@@ -18,6 +19,7 @@ export function Overview() {
   const [latest, setLatest] = useState<Experiment | null>(null);
   const [regressions, setRegressions] = useState<ExperimentQueryResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sampling, setSampling] = useState(false);
   const navigate = useNavigate();
   useDocumentTitle("Overview");
 
@@ -52,15 +54,37 @@ export function Overview() {
   const running =
     (experiments ?? []).find((e) => e.status === "RUNNING") ?? (experiments ?? []).find((e) => e.status === "QUEUED");
 
+  const trySample = async () => {
+    setSampling(true);
+    setError(null);
+    try {
+      navigate(await startCandidateRun(SAMPLE_QUERY, candidateIndexes(SAMPLE_QUERY), 5, 0.2));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSampling(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="Overview"
         sub={latest ? "What your last index experiment did to the workload." : experiments === null ? " " : "No completed experiments yet. Run one to see what an index does to your queries."}
         actions={
-          <button className="btn btn-primary" onClick={() => navigate("/experiments")}>
-            New experiment
-          </button>
+          <>
+            <button
+              className="btn"
+              onClick={trySample}
+              disabled={sampling}
+              title="Find one customer's latest orders, and try four indexes for it"
+            >
+              {sampling ? "Starting..." : "Try a sample experiment"}
+            </button>
+            <button className="btn btn-primary" onClick={() => navigate("/experiments")}>
+              New experiment
+            </button>
+          </>
         }
       />
 
