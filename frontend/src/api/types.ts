@@ -8,6 +8,7 @@ export type ExperimentPhase =
   | "ADDING_INDEX"
   | "WARMING_UP_CANDIDATE"
   | "MEASURING_CANDIDATE"
+  | "REMEASURING_BASELINE"
   | "COMPARING_RESULTS"
   | "DONE";
 
@@ -31,6 +32,23 @@ export interface PlanNode {
   children: PlanNode[];
 }
 
+export type TimingEvidence = "CLEAR" | "OVERLAPPING" | "TOO_FEW_RUNS";
+
+export interface PlanStats {
+  executionTimeMs: number;
+  sharedHitBlocks: number;
+  sharedReadBlocks: number;
+}
+
+export interface Timing {
+  baselineSamplesMs: number[];
+  candidateSamplesMs: number[];
+  pValue: number | null;
+  evidence: TimingEvidence;
+  baselinePlanStats: PlanStats;
+  candidatePlanStats: PlanStats;
+}
+
 export interface ExperimentQueryResult {
   id: number;
   experimentId: number;
@@ -44,6 +62,8 @@ export interface ExperimentQueryResult {
   baselinePlanJson: string;
   candidatePlanJson: string;
   planDiffSummary: string;
+  /** Absent on results recorded before individual timings were kept. */
+  timing?: Timing | null;
 }
 
 export interface Experiment {

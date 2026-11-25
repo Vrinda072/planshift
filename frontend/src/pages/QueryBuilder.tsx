@@ -117,15 +117,15 @@ export function QueryBuilder() {
     }
   };
 
-  const runExperiment = async () => {
-    if (effectiveIndexColumns.length === 0) {
+  const runExperiment = async (control = false) => {
+    if (!control && effectiveIndexColumns.length === 0) {
       setActionError("Pick a column to index, or set a filter column (it is used by default).");
       return;
     }
     setRunning(true);
     setActionError(null);
     try {
-      const result = await api.runQueryBuilderExperiment(spec, effectiveIndexColumns, repetitions, thresholdPercent / 100);
+      const result = await api.runQueryBuilderExperiment(spec, effectiveIndexColumns, repetitions, thresholdPercent / 100, control);
       navigate(`/experiments/${result.experimentId}`);
     } catch (e) {
       setActionError((e as Error).message);
@@ -380,11 +380,19 @@ export function QueryBuilder() {
                   </div>
 
                   <div className="aside-actions">
-                    <button className="btn btn-primary" onClick={runExperiment} disabled={running}>
+                    <button className="btn btn-primary" onClick={() => runExperiment()} disabled={running}>
                       {running ? "Starting..." : "Run experiment"}
                     </button>
                     <button className="btn" onClick={predictImpact} disabled={predicting}>
                       {predicting ? "Estimating..." : "Estimate impact first"}
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={() => runExperiment(true)}
+                      disabled={running}
+                      title="Run this query twice with no change, to see how much its timings vary on their own"
+                    >
+                      A/A check
                     </button>
                   </div>
 

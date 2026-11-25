@@ -9,4 +9,8 @@ describe("indexLabel", () => {
   it("lists composite columns in order", () => {
     expect(indexLabel({ targetTable: "airbnb", targetColumn: "room_type,price" })).toBe("airbnb (room_type, price)");
   });
+
+  it("says a control run changed nothing", () => {
+    expect(indexLabel({ targetTable: "orders", targetColumn: null, experimentType: "AA_CONTROL" })).toBe("orders, no change");
+  });
 });

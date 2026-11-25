@@ -62,6 +62,30 @@ class RegressionDetectorTest {
         assertThat(comparison.status()).isEqualTo(RegressionStatus.REGRESSED);
     }
 
+    private RepeatedBenchmarkResult samples(Double... times) {
+        List<Double> list = List.of(times);
+        return new RepeatedBenchmarkResult("Q1", list, RepeatedBenchmarkResult.median(list), 1);
+    }
+
+    @Test
+    void bigMedianMoveWithOverlappingRunsIsNotCalledAChange() {
+        QueryComparison comparison = detector.compare(query,
+                samples(10.0, 10.0, 30.0, 31.0, 32.0), samples(9.0, 11.0, 12.0, 33.0, 34.0), 0.20);
+
+        assertThat(comparison.percentageChange()).isLessThan(-20.0);
+        assertThat(comparison.evidence()).isEqualTo(TimingEvidence.OVERLAPPING);
+        assertThat(comparison.status()).isEqualTo(RegressionStatus.UNCHANGED);
+    }
+
+    @Test
+    void clearButSmallMoveStaysUnchanged() {
+        QueryComparison comparison = detector.compare(query,
+                samples(100.0, 101.0, 102.0, 103.0, 104.0), samples(105.0, 106.0, 107.0, 108.0, 109.0), 0.20);
+
+        assertThat(comparison.evidence()).isEqualTo(TimingEvidence.CLEAR);
+        assertThat(comparison.status()).isEqualTo(RegressionStatus.UNCHANGED);
+    }
+
     @Test
     void handlesZeroBaselineWithoutDividingByZero() {
         QueryComparison comparison = detector.compare(query, result(0.0), result(5.0), 0.20);

@@ -1,5 +1,5 @@
 import type { Experiment } from "../api/types";
-import { indexLabel } from "./index";
+import { indexLabel, isControl } from "./index";
 
 /**
  * The one-sentence finding for a completed run. Every figure is computed from
@@ -12,6 +12,13 @@ export function verdict(experiment: Experiment): string | null {
   }
   const improved = results.filter((r) => r.status === "IMPROVED").length;
   const regressed = results.filter((r) => r.status === "REGRESSED").length;
+  if (isControl(experiment)) {
+    const moved = results.length - results.filter((r) => r.status === "UNCHANGED").length;
+    const drift = Math.max(...results.map((r) => Math.abs(r.percentageChange))).toFixed(1);
+    return `Nothing changed between the two sides, yet the largest per-query difference was ${drift}%. ${moved} of ${results.length} ${
+      results.length === 1 ? "query" : "queries"
+    } would have been reported as a change.`;
+  }
   const target = indexLabel(experiment);
   const overall = experiment.overallPercentageChange;
   const noun = results.length === 1 ? "query" : "queries";

@@ -12,6 +12,7 @@ public record ExperimentQueryResult(
         RegressionStatus status,
         String baselinePlanJson,
         String candidatePlanJson,
-        String planDiffSummary
+        String planDiffSummary,
+        Timing timing
 ) {
 }

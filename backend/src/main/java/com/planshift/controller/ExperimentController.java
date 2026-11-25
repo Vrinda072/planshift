@@ -48,11 +48,14 @@ public class ExperimentController {
         double threshold = (request != null && request.thresholdFraction() != null)
                 ? request.thresholdFraction() : RegressionDetector.DEFAULT_THRESHOLD_FRACTION;
 
-        // Returns immediately with the experiment in RUNNING state; the real work
+        // Returns immediately with the experiment in QUEUED state; the real work
         // happens on a background thread and the client polls GET /api/experiments/{id}
         // for genuine progress (see current_phase), not a simulated spinner.
-        long id = experimentService.startAsync(WorkloadCatalog.all(), WorkloadCatalog.defaultParams(),
-                repetitions, threshold, "orders", "customer_id", "INDEX_ADD");
+        long id = request != null && Boolean.TRUE.equals(request.control())
+                ? experimentService.startControlAsync(WorkloadCatalog.all(), WorkloadCatalog.defaultParams(),
+                        repetitions, threshold, "orders")
+                : experimentService.startAsync(WorkloadCatalog.all(), WorkloadCatalog.defaultParams(),
+                        repetitions, threshold, "orders", "customer_id", "INDEX_ADD");
         return experimentRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Experiment vanished right after creation: " + id));
     }

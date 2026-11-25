@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Experiment } from "../api/types";
 import { formatChangeText } from "../format";
+import { isControl } from "../lib/index";
 import { verdict } from "../lib/verdict";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { Dumbbell } from "./Dumbbell";
@@ -17,7 +18,8 @@ export function Hero({ experiment, eyebrow, aside }: { experiment: Experiment; e
   const improved = results.filter((r) => r.status === "IMPROVED").length;
   const regressed = results.filter((r) => r.status === "REGRESSED").length;
   const unchanged = results.length - improved - regressed;
-  const tone = overall < 0 ? "good" : overall > 0 ? "bad" : "flat";
+  // A control run has no better or worse direction, so its number stays neutral.
+  const tone = isControl(experiment) || overall === 0 ? "flat" : overall < 0 ? "good" : "bad";
 
   return (
     <section className="hero">

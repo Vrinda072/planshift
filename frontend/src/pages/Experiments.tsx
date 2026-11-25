@@ -7,7 +7,7 @@ import { PageHeader } from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { STATUS_LABEL } from "../lib/status";
-import { indexLabel } from "../lib/index";
+import { indexLabel, typeLabel } from "../lib/index";
 
 type SortKey = "id" | "ran" | "result";
 type StatusFilter = "ALL" | "COMPLETED" | "QUEUED" | "RUNNING" | "FAILED";
@@ -37,13 +37,13 @@ export function Experiments() {
     api.listExperiments().then(setExperiments).catch((e) => setError(e.message));
   }, []);
 
-  const runExperiment = async () => {
+  const runExperiment = async (control = false) => {
     setRunning(true);
     setError(null);
     try {
       // Returns almost immediately with the experiment in RUNNING state; the
       // result page itself polls for live progress from there.
-      const result = await api.startExperiment(repetitions, thresholdPercent / 100);
+      const result = await api.startExperiment(repetitions, thresholdPercent / 100, control);
       navigate(`/experiments/${result.experimentId}`);
     } catch (e) {
       setError((e as Error).message);
@@ -57,7 +57,7 @@ export function Experiments() {
     const filtered = (experiments ?? []).filter((e) => {
       if (status !== "ALL" && e.status !== status) return false;
       if (!q) return true;
-      const hay = `#${e.experimentId} ${indexLabel(e)} ${e.experimentType}`.toLowerCase();
+      const hay = `#${e.experimentId} ${indexLabel(e)} ${typeLabel(e)}`.toLowerCase();
       return hay.includes(q);
     });
     const value = (e: Experiment) =>
@@ -79,8 +79,8 @@ export function Experiments() {
         title="Experiments"
         sub={
           <>
-            Each run times the workload, then again with a temporary index on <code>orders.customer_id</code> and times the full 10-query
-            workload both ways. For your own query and column, use the{" "}
+            Each run times the 10-query workload without and with a temporary index on <code>orders.customer_id</code>.
+            For your own query and column, use the{" "}
             <Link to="/query-builder" style={{ color: "var(--accent)" }}>query builder</Link>.
           </>
         }
@@ -96,7 +96,11 @@ export function Experiments() {
               <input className="input input-num" type="number" min={1} max={100} value={thresholdPercent}
                 onChange={(e) => setThresholdPercent(Number(e.target.value))} disabled={running} aria-label="Regression threshold percent" />
             </label>
-            <button className="btn btn-primary" onClick={runExperiment} disabled={running}>
+            <button className="btn" onClick={() => runExperiment(true)} disabled={running}
+              title="Run the same procedure with no change, to see how much timings vary on their own">
+              A/A check
+            </button>
+            <button className="btn btn-primary" onClick={() => runExperiment()} disabled={running}>
               {running ? "Starting..." : "Run experiment"}
             </button>
           </div>
@@ -166,7 +170,7 @@ export function Experiments() {
                     <td>
                       <Link to={`/experiments/${exp.experimentId}`} className="row-link" onClick={(e) => e.stopPropagation()}>
                         <span className="row-id">#{exp.experimentId}</span>{" "}
-                        <span className="cell-main">{exp.experimentType === "CUSTOM_QUERY" ? "Custom query" : "Built-in workload"}</span>
+                        <span className="cell-main">{typeLabel(exp)}</span>
                       </Link>
                     </td>
                     <td className="mono sub">{indexLabel(exp)}</td>

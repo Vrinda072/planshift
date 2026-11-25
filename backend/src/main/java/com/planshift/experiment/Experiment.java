@@ -19,4 +19,7 @@ public record Experiment(
         Double overallPercentageChange,
         List<ExperimentQueryResult> queryResults
 ) {
+
+    /** An A/A run. It measures noise, so it is left out of regressions and prediction history. */
+    public static final String CONTROL_TYPE = "AA_CONTROL";
 }

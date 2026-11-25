@@ -129,9 +129,10 @@ class ExperimentIsolationIT {
         assertThat(awaitFinished(first)).isEqualTo(ExperimentStatus.COMPLETED);
         assertThat(awaitFinished(second)).isEqualTo(ExperimentStatus.COMPLETED);
 
+        // Each run measures before, with its own index, and before again.
         assertThat(seenWhileMeasuring).containsExactly(
-                List.of(), List.of(IndexNaming.experimentName(first)),
-                List.of(), List.of(IndexNaming.experimentName(second)));
+                List.of(), List.of(IndexNaming.experimentName(first)), List.of(),
+                List.of(), List.of(IndexNaming.experimentName(second)), List.of());
         assertThat(indexNames()).containsExactly("idx_planshift_iso_probe_b", "my_own_idx");
     }
 
@@ -151,6 +152,31 @@ class ExperimentIsolationIT {
 
         assertThat(awaitFinished(id)).isEqualTo(ExperimentStatus.FAILED);
         assertThat(presentAtFailure).containsExactly(IndexNaming.experimentName(id));
+        assertThat(indexNames()).containsExactly("idx_planshift_iso_probe_b", "my_own_idx");
+    }
+
+    @Test
+    void controlRunChangesNothingAndKeepsEverySample() throws Exception {
+        List<List<String>> seen = new CopyOnWriteArrayList<>();
+        doAnswer(invocation -> {
+            seen.add(new ArrayList<>(temporaryIndexes()));
+            return invocation.callRealMethod();
+        }).when(benchmarkService).executeRepeated(any(), any(), anyInt());
+
+        long id = experimentService.startControlAsync(List.of(QUERY), Map.of(), 5, 0.0, "iso_probe");
+
+        assertThat(awaitFinished(id)).isEqualTo(ExperimentStatus.COMPLETED);
+        assertThat(seen).hasSize(3).allMatch(List::isEmpty);
+        Experiment experiment = experimentRepository.findById(id).orElseThrow();
+        assertThat(experiment.experimentType()).isEqualTo(Experiment.CONTROL_TYPE);
+        assertThat(experiment.targetColumn()).isNull();
+        Timing timing = experiment.queryResults().get(0).timing();
+        assertThat(timing.baselineSamplesMs()).hasSize(5);
+        assertThat(timing.candidateSamplesMs()).hasSize(5);
+        assertThat(timing.baselinePlanStats().sharedHitBlocks() + timing.baselinePlanStats().sharedReadBlocks())
+                .isPositive();
+        // Even with a zero threshold, nothing a control run finds is listed as a regression.
+        assertThat(experimentRepository.findAllRegressions()).noneMatch(r -> r.experimentId() == id);
         assertThat(indexNames()).containsExactly("idx_planshift_iso_probe_b", "my_own_idx");
     }
 

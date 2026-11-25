@@ -7,6 +7,8 @@ public record QueryComparison(
         double candidateMedianMs,
         double absoluteChangeMs,
         double percentageChange,
-        RegressionStatus status
+        RegressionStatus status,
+        double pValue,
+        TimingEvidence evidence
 ) {
 }

@@ -41,10 +41,10 @@ export const api = {
   getExperiment: (id: number) => request<Experiment>(`/api/experiments/${id}`),
   // Returns immediately with the experiment in RUNNING state -- the real work
   // happens on the server in the background. Poll getExperiment(id) for progress.
-  startExperiment: (repetitions: number, thresholdFraction: number) =>
+  startExperiment: (repetitions: number, thresholdFraction: number, control = false) =>
     request<Experiment>("/api/experiments", {
       method: "POST",
-      body: JSON.stringify({ repetitions, thresholdFraction }),
+      body: JSON.stringify({ repetitions, thresholdFraction, control }),
     }),
   listRegressions: () => request<ExperimentQueryResult[]>("/api/regressions"),
   listTables: () => request<TableInfo[]>("/api/schema/tables"),
@@ -53,10 +53,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify(spec),
     }),
-  runQueryBuilderExperiment: (spec: QuerySpec, indexColumns: string[], repetitions: number, thresholdFraction: number) =>
+  runQueryBuilderExperiment: (
+    spec: QuerySpec,
+    indexColumns: string[],
+    repetitions: number,
+    thresholdFraction: number,
+    control = false
+  ) =>
     request<Experiment>("/api/query-builder/run", {
       method: "POST",
-      body: JSON.stringify({ spec, indexColumns, repetitions, thresholdFraction }),
+      body: JSON.stringify({ spec, indexColumns, repetitions, thresholdFraction, control }),
     }),
   predictImpact: (spec: QuerySpec, indexColumns: string[]) =>
     request<PredictedImpact>("/api/query-builder/predict-impact", {

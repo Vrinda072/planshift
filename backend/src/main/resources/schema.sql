@@ -94,4 +94,17 @@ CREATE TABLE IF NOT EXISTS experiment_query_results (
     plan_diff_summary    TEXT
 );
 
+-- The individual timings behind each median (comma-separated milliseconds), whether the two sets can be told
+-- apart, and what Postgres reported for the EXPLAIN ANALYZE run. All null on older results.
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS baseline_samples_ms TEXT;
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS candidate_samples_ms TEXT;
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS p_value DOUBLE PRECISION;
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS timing_evidence VARCHAR(20);
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS baseline_db_ms DOUBLE PRECISION;
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS baseline_hit_blocks BIGINT;
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS baseline_read_blocks BIGINT;
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS candidate_db_ms DOUBLE PRECISION;
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS candidate_hit_blocks BIGINT;
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS candidate_read_blocks BIGINT;
+
 CREATE INDEX IF NOT EXISTS idx_eqr_experiment_id ON experiment_query_results (experiment_id);

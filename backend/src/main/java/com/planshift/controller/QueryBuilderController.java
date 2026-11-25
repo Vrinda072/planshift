@@ -64,14 +64,18 @@ public class QueryBuilderController {
     public Experiment run(@RequestBody QueryBuilderRunRequest request) {
         BuiltQuery built = queryBuilderService.build(request.spec());
 
-        IndexSpec index = indexOf(request);
+        boolean control = Boolean.TRUE.equals(request.control());
+        IndexSpec index = control ? null : indexOf(request);
 
         int repetitions = request.repetitions() != null ? request.repetitions() : DEFAULT_REPETITIONS;
         double threshold = request.thresholdFraction() != null
                 ? request.thresholdFraction() : RegressionDetector.DEFAULT_THRESHOLD_FRACTION;
 
-        long id = experimentService.startAsync(List.of(built.query()), built.params(), repetitions, threshold,
-                request.spec().table(), index, "CUSTOM_QUERY");
+        long id = control
+                ? experimentService.startControlAsync(List.of(built.query()), built.params(), repetitions, threshold,
+                        request.spec().table())
+                : experimentService.startAsync(List.of(built.query()), built.params(), repetitions, threshold,
+                        request.spec().table(), index, "CUSTOM_QUERY");
         return experimentRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Experiment vanished right after creation: " + id));
     }

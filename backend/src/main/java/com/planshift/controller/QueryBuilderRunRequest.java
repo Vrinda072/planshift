@@ -7,6 +7,7 @@ public record QueryBuilderRunRequest(
         String indexColumn,
         java.util.List<String> indexColumns,
         Integer repetitions,
-        Double thresholdFraction
+        Double thresholdFraction,
+        Boolean control
 ) {
 }

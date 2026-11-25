@@ -8,6 +8,7 @@ export const PHASE_ORDER: ExperimentPhase[] = [
   "ADDING_INDEX",
   "WARMING_UP_CANDIDATE",
   "MEASURING_CANDIDATE",
+  "REMEASURING_BASELINE",
   "COMPARING_RESULTS",
   "DONE",
 ];
@@ -20,12 +21,15 @@ export const PHASE_LABEL: Record<ExperimentPhase, string> = {
   ADDING_INDEX: "Creating the index",
   WARMING_UP_CANDIDATE: "Warming up cache (candidate)",
   MEASURING_CANDIDATE: "Measuring candidate",
+  REMEASURING_BASELINE: "Measuring baseline again",
   COMPARING_RESULTS: "Comparing & saving results",
   DONE: "Done",
 };
 
 export const PHASE_EXPLANATION: Record<ExperimentPhase, string> = {
   PENDING: "The experiment has been created and is about to start.",
+  REMEASURING_BASELINE:
+    "Removing the temporary index and timing the rest of the baseline runs. Measuring \"before\" on both sides of \"after\" keeps a slow drift in the machine from looking like an effect.",
   DROPPING_INDEX:
     "Making sure no temporary index from an interrupted run is still there. Indexes that already existed are left in place.",
   WARMING_UP_BASELINE:
@@ -37,6 +41,6 @@ export const PHASE_EXPLANATION: Record<ExperimentPhase, string> = {
   MEASURING_CANDIDATE:
     "Timing the same queries again with the index in place. This is the \"after\" state.",
   COMPARING_RESULTS:
-    "Computing the change per query, comparing the before and after plans, and removing the temporary index.",
+    "Computing the change per query, checking whether the two sets of timings can be told apart, and comparing the plans.",
   DONE: "Finished.",
 };

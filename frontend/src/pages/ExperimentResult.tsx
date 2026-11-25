@@ -12,7 +12,9 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useExperimentPolling } from "../hooks/useExperimentPolling";
 import { exportCsv, exportJson } from "../lib/export";
 import { strategyChange } from "../lib/plan";
-import { indexLabel } from "../lib/index";
+import { indexLabel, isControl, typeLabel } from "../lib/index";
+import { evidenceNote, range } from "../lib/timing";
+import { TimingDetail } from "../components/TimingDetail";
 import { belowNoiseFloor } from "../lib/noise";
 import { IconDownload } from "../components/Icons";
 
@@ -22,10 +24,10 @@ function MetaRow({ experiment }: { experiment: Experiment }) {
     <div className="meta-row">
       <span className="meta-item">
         <span className="meta-k">Type</span>
-        {experiment.experimentType === "CUSTOM_QUERY" ? "Custom query" : "Built-in workload"}
+        {typeLabel(experiment)}
       </span>
       <span className="meta-item">
-        <span className="meta-k">Index on</span>
+        <span className="meta-k">{isControl(experiment) ? "Table" : "Index on"}</span>
         <span className="mono">{target}</span>
       </span>
       <span className="meta-item">
@@ -146,7 +148,7 @@ export function ExperimentResult() {
             <button className="btn btn-sm" onClick={copyLink}>{copied ? "Copied" : "Copy link"}</button>
             <button className="btn btn-sm" onClick={() => exportCsv(experiment)}><IconDownload />CSV</button>
             <button className="btn btn-sm" onClick={() => exportJson(experiment)}><IconDownload />JSON</button>
-            {experiment.experimentType !== "CUSTOM_QUERY" && (
+            {experiment.experimentType === "INDEX_ADD" && (
               <button className="btn btn-primary btn-sm" onClick={rerun} disabled={rerunning}>
                 {rerunning ? "Starting..." : "Run again"}
               </button>
@@ -169,7 +171,7 @@ export function ExperimentResult() {
       <section className="panel">
         <div className="panel-head">
           <h2 className="panel-title">Results</h2>
-          <span className="panel-meta">Expand a row to see what the planner changed</span>
+          <span className="panel-meta">Median of all runs, with the fastest and slowest below</span>
         </div>
         <div className="table-scroll">
           <table>
@@ -195,14 +197,16 @@ export function ExperimentResult() {
                           return change ? <div className="cell-sub">{change.before} to {change.after}</div> : null;
                         })()}
                         <button className="see-why-toggle" onClick={() => toggle(r.queryId)} aria-expanded={isOpen}>
-                          {isOpen ? "Hide plan" : "See plan"}
+                          {isOpen ? "Hide details" : "See runs and plan"}
                         </button>
                       </td>
                       <td className="num mono sub">
                         <AnimatedNumber value={r.baselineMedianMs} format={formatMs} />
+                        {r.timing && <div className="cell-range">{range(r.timing.baselineSamplesMs)}</div>}
                       </td>
                       <td className="num mono">
                         <AnimatedNumber value={r.candidateMedianMs} format={formatMs} />
+                        {r.timing && <div className="cell-range">{range(r.timing.candidateSamplesMs)}</div>}
                       </td>
                       <td className="num">
                         <span className={`change-value ${changeClassName(r.percentageChange)}`}>
@@ -217,6 +221,7 @@ export function ExperimentResult() {
                         >
                           {r.status === "IMPROVED" ? "Improved" : r.status === "REGRESSED" ? "Regressed" : "Unchanged"}
                         </span>
+                        <div className="cell-range">{evidenceNote(r, experiment.thresholdFraction)}</div>
                       </td>
                     </tr>
                     {/* Always mounted so the expand/collapse can animate its height
@@ -227,6 +232,7 @@ export function ExperimentResult() {
                         <div className={`accordion${isOpen ? " open" : ""}`}>
                           <div className="accordion-inner">
                             <div className="accordion-body">
+                              {r.timing && <TimingDetail timing={r.timing} />}
                               <p className="accordion-summary">{r.planDiffSummary}</p>
                               <p className="accordion-hint">
                                 Each box is one step in Postgres's real execution plan for this query. Highlighted

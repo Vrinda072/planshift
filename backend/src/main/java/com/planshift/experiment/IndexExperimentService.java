@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.stream.IntStream;
 
 /**
  * Orchestrates an index experiment: runs a workload without a new index
@@ -43,6 +44,7 @@ public class IndexExperimentService {
 
     private static final Logger log = LoggerFactory.getLogger(IndexExperimentService.class);
     private static final long DATASET_SEED = 42L;
+    static final int MAX_REPETITIONS = 30;
 
     private final IndexChangeService indexChangeService;
     private final BenchmarkService benchmarkService;
@@ -92,14 +94,25 @@ public class IndexExperimentService {
                 IndexSpec.of(indexColumn), experimentType);
     }
 
+    /** Starts an A/A control: the whole procedure with no change between the two sides, to show normal variation. */
+    public long startControlAsync(List<WorkloadQuery> queries, Map<String, Object> params,
+                                   int repetitions, double thresholdFraction, String table) {
+        return startAsync(queries, params, repetitions, thresholdFraction, table, (IndexSpec) null,
+                Experiment.CONTROL_TYPE);
+    }
+
+    /** {@code index} is null only for a control run. */
     public long startAsync(List<WorkloadQuery> queries, Map<String, Object> params,
                             int repetitions, double thresholdFraction,
                             String indexTable, IndexSpec index, String experimentType) {
+        if (repetitions < 1 || repetitions > MAX_REPETITIONS) {
+            throw new IllegalArgumentException("Repetitions must be between 1 and " + MAX_REPETITIONS);
+        }
         int datasetCustomers = schemaService.tableExists("customers") ? countRows("customers") : 0;
         int datasetOrders = schemaService.tableExists("orders") ? countRows("orders") : 0;
         long experimentId = experimentRepository.insertExperiment(
                 experimentType, datasetCustomers, datasetOrders, DATASET_SEED, repetitions, thresholdFraction,
-                indexTable, index.columnsKey());
+                indexTable, index == null ? null : index.columnsKey());
 
         try {
             executorService.execute(() -> runBody(experimentId, queries, params, repetitions, thresholdFraction,
@@ -146,27 +159,40 @@ public class IndexExperimentService {
             experimentRepository.updatePhase(experimentId, ExperimentPhase.WARMING_UP_BASELINE);
             warmUp(queries, params);
 
+            // The baseline is measured in two halves, one either side of the candidate. That puts both
+            // configurations around the same point in time, so a machine that is steadily speeding up or slowing
+            // down doesn't count for or against the index. It still creates and drops the index only once.
             experimentRepository.updatePhase(experimentId, ExperimentPhase.MEASURING_BASELINE);
-            List<RepeatedBenchmarkResult> baselineTimings = queries.stream()
-                    .map(q -> benchmarkService.executeRepeated(q, params, repetitions))
-                    .toList();
-            List<PlanNode> baselinePlans = queries.stream()
-                    .map(q -> capturePlan(q, params))
+            int secondHalf = repetitions / 2;
+            List<RepeatedBenchmarkResult> baselineFirst = measure(queries, params, repetitions - secondHalf);
+            List<ExplainCapture> baselineCaptures = queries.stream()
+                    .map(q -> explainService.capture(q, params))
                     .toList();
 
-            experimentRepository.updatePhase(experimentId, ExperimentPhase.ADDING_INDEX);
-            indexChangeService.createExperimentIndex(experimentId, indexTable, index);
+            if (index != null) {
+                experimentRepository.updatePhase(experimentId, ExperimentPhase.ADDING_INDEX);
+                indexChangeService.createExperimentIndex(experimentId, indexTable, index);
+            }
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.WARMING_UP_CANDIDATE);
             warmUp(queries, params);
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.MEASURING_CANDIDATE);
-            List<RepeatedBenchmarkResult> candidateTimings = queries.stream()
-                    .map(q -> benchmarkService.executeRepeated(q, params, repetitions))
+            List<RepeatedBenchmarkResult> candidateTimings = measure(queries, params, repetitions);
+            List<ExplainCapture> candidateCaptures = queries.stream()
+                    .map(q -> explainService.capture(q, params))
                     .toList();
-            List<PlanNode> candidatePlans = queries.stream()
-                    .map(q -> capturePlan(q, params))
-                    .toList();
+
+            experimentRepository.updatePhase(experimentId, ExperimentPhase.REMEASURING_BASELINE);
+            indexChangeService.dropRecordedIndexes();
+            List<RepeatedBenchmarkResult> baselineTimings = baselineFirst;
+            if (secondHalf > 0) {
+                warmUp(queries, params);
+                List<RepeatedBenchmarkResult> baselineSecond = measure(queries, params, secondHalf);
+                baselineTimings = IntStream.range(0, queries.size())
+                        .mapToObj(i -> baselineFirst.get(i).plus(baselineSecond.get(i)))
+                        .toList();
+            }
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.COMPARING_RESULTS);
             List<Double> percentageChanges = new ArrayList<>();
@@ -176,14 +202,20 @@ public class IndexExperimentService {
                         query, baselineTimings.get(i), candidateTimings.get(i), thresholdFraction);
                 percentageChanges.add(comparison.percentageChange());
 
-                List<PlanDiff> diffs = planComparator.compare(baselinePlans.get(i), candidatePlans.get(i));
+                PlanNode baselinePlan = planParser.parse(baselineCaptures.get(i).planRoot());
+                PlanNode candidatePlan = planParser.parse(candidateCaptures.get(i).planRoot());
+                List<PlanDiff> diffs = planComparator.compare(baselinePlan, candidatePlan);
                 String summary = planComparator.summarize(diffs);
 
+                Timing timing = new Timing(
+                        baselineTimings.get(i).executionTimesMs(), candidateTimings.get(i).executionTimesMs(),
+                        comparison.pValue(), comparison.evidence(),
+                        planStats(baselineCaptures.get(i)), planStats(candidateCaptures.get(i)));
                 ExperimentQueryResult result = new ExperimentQueryResult(
                         0, experimentId, comparison.queryId(), comparison.queryName(),
                         comparison.baselineMedianMs(), comparison.candidateMedianMs(),
                         comparison.absoluteChangeMs(), comparison.percentageChange(), comparison.status(),
-                        toJson(baselinePlans.get(i)), toJson(candidatePlans.get(i)), summary);
+                        toJson(baselinePlan), toJson(candidatePlan), summary, timing);
                 experimentRepository.insertQueryResult(experimentId, result);
             }
 
@@ -210,9 +242,16 @@ public class IndexExperimentService {
         }
     }
 
-    private PlanNode capturePlan(WorkloadQuery query, Map<String, Object> params) {
-        ExplainCapture capture = explainService.capture(query, params);
-        return planParser.parse(capture.planRoot());
+    private List<RepeatedBenchmarkResult> measure(List<WorkloadQuery> queries, Map<String, Object> params, int runs) {
+        return queries.stream()
+                .map(q -> benchmarkService.executeRepeated(q, params, runs))
+                .toList();
+    }
+
+    private PlanStats planStats(ExplainCapture capture) {
+        return new PlanStats(capture.executionTimeMs(),
+                capture.planRoot().path("Shared Hit Blocks").asLong(),
+                capture.planRoot().path("Shared Read Blocks").asLong());
     }
 
     private String toJson(PlanNode node) {

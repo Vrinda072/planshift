@@ -52,14 +52,6 @@ public class BenchmarkService {
             times.add(result.executionTimeMs());
             rowsReturned = result.rowsReturned();
         }
-        return new RepeatedBenchmarkResult(query.id(), times, median(times), rowsReturned);
-    }
-
-    private double median(List<Double> values) {
-        List<Double> sorted = new ArrayList<>(values);
-        sorted.sort(Double::compareTo);
-        int n = sorted.size();
-        int mid = n / 2;
-        return (n % 2 == 0) ? (sorted.get(mid - 1) + sorted.get(mid)) / 2.0 : sorted.get(mid);
+        return new RepeatedBenchmarkResult(query.id(), times, RepeatedBenchmarkResult.median(times), rowsReturned);
     }
 }

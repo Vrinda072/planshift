@@ -6,8 +6,10 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Repository
 public class ExperimentRepository {
@@ -65,13 +67,47 @@ public class ExperimentRepository {
     }
 
     public void insertQueryResult(long experimentId, ExperimentQueryResult r) {
+        Timing t = r.timing();
         jdbc.update(
                 "INSERT INTO experiment_query_results (experiment_id, query_id, query_name, baseline_median_ms, "
                         + "candidate_median_ms, absolute_change_ms, percentage_change, status, baseline_plan_json, "
-                        + "candidate_plan_json, plan_diff_summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        + "candidate_plan_json, plan_diff_summary, baseline_samples_ms, candidate_samples_ms, p_value, "
+                        + "timing_evidence, baseline_db_ms, baseline_hit_blocks, baseline_read_blocks, candidate_db_ms, "
+                        + "candidate_hit_blocks, candidate_read_blocks) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 experimentId, r.queryId(), r.queryName(), r.baselineMedianMs(), r.candidateMedianMs(),
                 r.absoluteChangeMs(), r.percentageChange(), r.status().name(),
-                r.baselinePlanJson(), r.candidatePlanJson(), r.planDiffSummary());
+                r.baselinePlanJson(), r.candidatePlanJson(), r.planDiffSummary(),
+                joinSamples(t.baselineSamplesMs()), joinSamples(t.candidateSamplesMs()), t.pValue(),
+                t.evidence().name(),
+                t.baselinePlanStats().executionTimeMs(), t.baselinePlanStats().sharedHitBlocks(),
+                t.baselinePlanStats().sharedReadBlocks(),
+                t.candidatePlanStats().executionTimeMs(), t.candidatePlanStats().sharedHitBlocks(),
+                t.candidatePlanStats().sharedReadBlocks());
+    }
+
+    private static String joinSamples(List<Double> samples) {
+        return samples.stream().map(String::valueOf).collect(Collectors.joining(","));
+    }
+
+    private static List<Double> splitSamples(String joined) {
+        return Arrays.stream(joined.split(",")).map(Double::valueOf).toList();
+    }
+
+    private Timing mapTiming(java.sql.ResultSet rs) throws java.sql.SQLException {
+        String evidence = rs.getString("timing_evidence");
+        if (evidence == null) {
+            return null;
+        }
+        return new Timing(
+                splitSamples(rs.getString("baseline_samples_ms")),
+                splitSamples(rs.getString("candidate_samples_ms")),
+                rs.getDouble("p_value"),
+                TimingEvidence.valueOf(evidence),
+                new PlanStats(rs.getDouble("baseline_db_ms"), rs.getLong("baseline_hit_blocks"),
+                        rs.getLong("baseline_read_blocks")),
+                new PlanStats(rs.getDouble("candidate_db_ms"), rs.getLong("candidate_hit_blocks"),
+                        rs.getLong("candidate_read_blocks")));
     }
 
     public void completeExperiment(long experimentId, double overallPercentageChange) {
@@ -112,7 +148,8 @@ public class ExperimentRepository {
                         + "eqr.baseline_plan_json AS baseline_plan_json "
                         + "FROM experiment_query_results eqr "
                         + "JOIN experiments e ON eqr.experiment_id = e.experiment_id "
-                        + "WHERE e.status = 'COMPLETED' AND eqr.baseline_plan_json IS NOT NULL AND e.target_table IS NOT NULL",
+                        + "WHERE e.status = 'COMPLETED' AND e.experiment_type <> '" + Experiment.CONTROL_TYPE + "' "
+                        + "AND eqr.baseline_plan_json IS NOT NULL AND e.target_table IS NOT NULL",
                 (rs, rowNum) -> new HistoricalResultPoint(
                         rs.getString("target_table"),
                         rs.getDouble("percentage_change"),
@@ -123,7 +160,7 @@ public class ExperimentRepository {
         return jdbc.query(
                 "SELECT eqr.* FROM experiment_query_results eqr "
                         + "JOIN experiments e ON eqr.experiment_id = e.experiment_id "
-                        + "WHERE eqr.status = 'REGRESSED' "
+                        + "WHERE eqr.status = 'REGRESSED' AND e.experiment_type <> '" + Experiment.CONTROL_TYPE + "' "
                         + "ORDER BY e.created_at DESC",
                 this::mapQueryResult);
     }
@@ -141,7 +178,8 @@ public class ExperimentRepository {
                 RegressionStatus.valueOf(rs.getString("status")),
                 rs.getString("baseline_plan_json"),
                 rs.getString("candidate_plan_json"),
-                rs.getString("plan_diff_summary")
+                rs.getString("plan_diff_summary"),
+                mapTiming(rs)
         );
     }
 

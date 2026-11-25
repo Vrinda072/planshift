@@ -9,7 +9,7 @@ import { RunBars } from "../components/RunBars";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { STATUS_LABEL } from "../lib/status";
-import { indexLabel } from "../lib/index";
+import { indexLabel, isControl, typeLabel } from "../lib/index";
 
 const TREND_RUNS = 12;
 
@@ -26,7 +26,7 @@ export function Overview() {
       .listExperiments()
       .then((list) => {
         setExperiments(list);
-        const last = list.find((e) => e.status === "COMPLETED");
+        const last = list.find((e) => e.status === "COMPLETED" && !isControl(e));
         if (last) api.getExperiment(last.experimentId).then(setLatest).catch(() => setLatest(null));
       })
       .catch((e) => setError(e.message));
@@ -34,7 +34,7 @@ export function Overview() {
   }, []);
 
   const completed = useMemo(
-    () => (experiments ?? []).filter((e) => e.status === "COMPLETED" && e.overallPercentageChange !== null),
+    () => (experiments ?? []).filter((e) => e.status === "COMPLETED" && !isControl(e) && e.overallPercentageChange !== null),
     [experiments]
   );
 
@@ -179,7 +179,7 @@ export function Overview() {
                   >
                     <td>
                       <span className="row-id">#{exp.experimentId}</span>{" "}
-                      <span className="cell-main">{exp.experimentType === "CUSTOM_QUERY" ? "Custom query" : "Built-in workload"}</span>
+                      <span className="cell-main">{typeLabel(exp)}</span>
                     </td>
                     <td className="mono sub">{indexLabel(exp)}</td>
                     <td className="sub">{formatDate(exp.createdAt)}</td>
