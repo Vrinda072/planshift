@@ -27,7 +27,8 @@ export interface ImportResult {
 
 export interface PredictedImpact {
   predictedPercentageChange: number;
-  method: "historical" | "heuristic";
+  method: "historical" | "structure" | "heuristic";
+  confidence: "moderate" | "low";
   sampleSize: number;
   selectivity: number;
   currentScanType: string;

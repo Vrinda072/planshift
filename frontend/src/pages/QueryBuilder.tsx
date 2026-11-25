@@ -403,7 +403,11 @@ export function QueryBuilder() {
                       <div className="label">
                         Estimated change{" "}
                         <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>
-                          ({predictedImpact.method === "historical" ? "from past runs" : "rule of thumb"})
+                          ({predictedImpact.method === "historical"
+                            ? "from past runs"
+                            : predictedImpact.method === "structure"
+                              ? "from the index shape"
+                              : "rule of thumb"}, {predictedImpact.confidence} confidence)
                         </span>
                       </div>
                       <div className={`predict-value change-value ${changeClassName(predictedImpact.predictedPercentageChange)}`}>
@@ -411,8 +415,8 @@ export function QueryBuilder() {
                       </div>
                       <p className="predict-note">
                         {predictedImpact.note} Current plan: <span className="mono">{predictedImpact.currentScanType}</span>,
-                        selectivity <span className="mono">{(predictedImpact.selectivity * 100).toFixed(1)}%</span>. An
-                        estimate, not a measurement.
+                        filter keeps <span className="mono">{Number((predictedImpact.selectivity * 100).toPrecision(2))}%</span> of
+                        rows. An estimate, not a measurement.
                       </p>
                     </div>
                   )}

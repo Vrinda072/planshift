@@ -141,19 +141,29 @@ public class ExperimentRepository {
                 experimentId);
     }
 
-    /** Completed results with a stored baseline plan -- the pool ImpactPredictionService searches for similar past cases. */
-    public List<HistoricalResultPoint> findCompletedResultsWithPlans() {
+    public void saveQueryFeatures(long experimentId, String access, String operator, double selectivity,
+                                   boolean coversOrder) {
+        jdbc.update("UPDATE experiments SET query_access = ?, query_operator = ?, query_selectivity = ?, "
+                + "query_covers_order = ? WHERE experiment_id = ?",
+                access, operator, selectivity, coversOrder, experimentId);
+    }
+
+    public void saveIndexCost(long experimentId, long sizeBytes, double buildMs) {
+        jdbc.update("UPDATE experiments SET index_size_bytes = ?, index_build_ms = ? WHERE experiment_id = ?",
+                sizeBytes, buildMs, experimentId);
+    }
+
+    /** Completed runs that used an index the same way for the same kind of filter. */
+    public List<HistoricalResultPoint> findComparableChanges(String access, String operator, boolean coversOrder) {
         return jdbc.query(
-                "SELECT e.target_table AS target_table, eqr.percentage_change AS percentage_change, "
-                        + "eqr.baseline_plan_json AS baseline_plan_json "
+                "SELECT e.query_selectivity AS selectivity, eqr.percentage_change AS percentage_change "
                         + "FROM experiment_query_results eqr "
                         + "JOIN experiments e ON eqr.experiment_id = e.experiment_id "
-                        + "WHERE e.status = 'COMPLETED' AND e.experiment_type <> '" + Experiment.CONTROL_TYPE + "' "
-                        + "AND eqr.baseline_plan_json IS NOT NULL AND e.target_table IS NOT NULL",
+                        + "WHERE e.status = 'COMPLETED' AND e.query_access = ? AND e.query_operator = ? "
+                        + "AND e.query_covers_order = ? AND e.query_selectivity IS NOT NULL",
                 (rs, rowNum) -> new HistoricalResultPoint(
-                        rs.getString("target_table"),
-                        rs.getDouble("percentage_change"),
-                        rs.getString("baseline_plan_json")));
+                        rs.getDouble("selectivity"), rs.getDouble("percentage_change")),
+                access, operator, coversOrder);
     }
 
     public List<ExperimentQueryResult> findAllRegressions() {
@@ -198,6 +208,8 @@ public class ExperimentRepository {
                 rs.getString("target_column"),
                 rs.getInt("repetitions"),
                 rs.getDouble("threshold_fraction"),
+                rs.getObject("index_size_bytes", Long.class),
+                rs.getObject("index_build_ms", Double.class),
                 ExperimentStatus.valueOf(rs.getString("status")),
                 phase != null ? ExperimentPhase.valueOf(phase) : null,
                 overallChange,

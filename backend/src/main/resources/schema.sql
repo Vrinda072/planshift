@@ -79,6 +79,17 @@ ALTER TABLE experiments ADD COLUMN IF NOT EXISTS index_name VARCHAR(63);
 ALTER TABLE experiments ADD COLUMN IF NOT EXISTS legacy_index_pending BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE experiments ALTER COLUMN legacy_index_pending SET DEFAULT FALSE;
 
+-- How the tested index could serve the query, and how selective its filter was, as worked out when the run was
+-- submitted (query-builder runs only). Prediction compares against these instead of re-deriving them later.
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS query_access VARCHAR(10);
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS query_operator VARCHAR(10);
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS query_selectivity DOUBLE PRECISION;
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS query_covers_order BOOLEAN;
+
+-- What the tested index cost: its size on disk and how long CREATE INDEX took.
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS index_size_bytes BIGINT;
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS index_build_ms DOUBLE PRECISION;
+
 CREATE TABLE IF NOT EXISTS experiment_query_results (
     id                   BIGSERIAL PRIMARY KEY,
     experiment_id        BIGINT         NOT NULL REFERENCES experiments (experiment_id),

@@ -84,6 +84,12 @@ public class IndexChangeService {
         return name;
     }
 
+    public long sizeInBytes(String indexName) {
+        Long bytes = jdbc.queryForObject("SELECT pg_relation_size(to_regclass(?))", Long.class,
+                "public." + quoteIdent(indexName));
+        return bytes == null ? 0 : bytes;
+    }
+
     /** Drops every index still recorded as owned by an experiment. Nothing is ever dropped on the strength of its name. */
     public void dropRecordedIndexes() {
         jdbc.query("SELECT experiment_id, index_name FROM experiments WHERE index_name IS NOT NULL",

@@ -80,7 +80,7 @@ public class SchemaService {
      * table that has never been analyzed, which is exactly the state of a
      * freshly imported CSV, so fall back to a real count in that case.
      */
-    private long rowEstimate(String table) {
+    public long rowEstimate(String table) {
         Long estimate = jdbc.queryForObject(
                 "SELECT c.reltuples::bigint FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                         + "WHERE n.nspname = 'public' AND c.relname = ?",

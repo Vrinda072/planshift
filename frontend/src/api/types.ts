@@ -77,6 +77,9 @@ export interface Experiment {
   targetColumn: string | null;
   repetitions: number;
   thresholdFraction: number;
+  /** Cost of the tested index. Null for control runs and older results. */
+  indexSizeBytes?: number | null;
+  indexBuildMs?: number | null;
   status: ExperimentStatus;
   currentPhase: ExperimentPhase | null;
   overallPercentageChange: number | null;

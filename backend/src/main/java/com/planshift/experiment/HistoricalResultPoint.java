@@ -1,9 +1,8 @@
 package com.planshift.experiment;
 
-/** One past, completed query result -- the raw material ImpactPredictionService looks up neighbors from. */
+/** One past measured change, with the selectivity its filter had at the time. */
 public record HistoricalResultPoint(
-        String targetTable,
-        double percentageChange,
-        String baselinePlanJson
+        double selectivity,
+        double percentageChange
 ) {
 }

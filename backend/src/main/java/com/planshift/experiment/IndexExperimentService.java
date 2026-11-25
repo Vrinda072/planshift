@@ -171,7 +171,10 @@ public class IndexExperimentService {
 
             if (index != null) {
                 experimentRepository.updatePhase(experimentId, ExperimentPhase.ADDING_INDEX);
-                indexChangeService.createExperimentIndex(experimentId, indexTable, index);
+                long started = System.nanoTime();
+                String indexName = indexChangeService.createExperimentIndex(experimentId, indexTable, index);
+                double buildMs = (System.nanoTime() - started) / 1_000_000.0;
+                experimentRepository.saveIndexCost(experimentId, indexChangeService.sizeInBytes(indexName), buildMs);
             }
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.WARMING_UP_CANDIDATE);

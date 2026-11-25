@@ -14,6 +14,8 @@ public record Experiment(
         String targetColumn,
         int repetitions,
         double thresholdFraction,
+        Long indexSizeBytes,
+        Double indexBuildMs,
         ExperimentStatus status,
         ExperimentPhase currentPhase,
         Double overallPercentageChange,

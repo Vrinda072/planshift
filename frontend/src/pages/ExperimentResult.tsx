@@ -2,7 +2,7 @@ import { Fragment, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { Experiment } from "../api/types";
-import { changeClassName, formatChangeText, formatDate, formatMs } from "../format";
+import { changeClassName, formatBytes, formatChangeText, formatDate, formatMs } from "../format";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { Hero } from "../components/Hero";
 import { ExperimentProgress } from "../components/ExperimentProgress";
@@ -30,6 +30,14 @@ function MetaRow({ experiment }: { experiment: Experiment }) {
         <span className="meta-k">{isControl(experiment) ? "Table" : "Index on"}</span>
         <span className="mono">{target}</span>
       </span>
+      {experiment.indexSizeBytes != null && experiment.indexBuildMs != null && (
+        <span className="meta-item">
+          <span className="meta-k">Index cost</span>
+          <span className="mono">
+            {formatBytes(experiment.indexSizeBytes)}, built in {formatMs(experiment.indexBuildMs)}
+          </span>
+        </span>
+      )}
       <span className="meta-item">
         <span className="meta-k">Runs</span>
         <span className="mono">{experiment.repetitions} per query</span>

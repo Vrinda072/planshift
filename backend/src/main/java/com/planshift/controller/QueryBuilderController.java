@@ -7,6 +7,7 @@ import com.planshift.experiment.IndexSpec;
 import com.planshift.experiment.RegressionDetector;
 import com.planshift.impact.ImpactPredictionService;
 import com.planshift.impact.PredictedImpact;
+import com.planshift.impact.QueryFeatures;
 import com.planshift.querybuilder.BuiltQuery;
 import com.planshift.querybuilder.QueryBuilderService;
 import com.planshift.querybuilder.QuerySpec;
@@ -53,9 +54,7 @@ public class QueryBuilderController {
      */
     @PostMapping("/api/query-builder/predict-impact")
     public PredictedImpact predictImpact(@RequestBody QueryBuilderRunRequest request) {
-        IndexSpec index = indexOf(request);
-        // The estimate only looks at the leading column, which is what decides whether the planner can use the index.
-        return impactPredictionService.predict(request.spec(), index.columns().get(0));
+        return impactPredictionService.predict(request.spec(), indexOf(request));
     }
 
     /** Builds the query, then runs a real baseline-vs-candidate index experiment against it. */
@@ -71,11 +70,18 @@ public class QueryBuilderController {
         double threshold = request.thresholdFraction() != null
                 ? request.thresholdFraction() : RegressionDetector.DEFAULT_THRESHOLD_FRACTION;
 
+        // Worked out before submitting, so a bad column is rejected without leaving a run behind.
+        QueryFeatures features = control ? null : impactPredictionService.describe(request.spec(), index);
+
         long id = control
                 ? experimentService.startControlAsync(List.of(built.query()), built.params(), repetitions, threshold,
                         request.spec().table())
                 : experimentService.startAsync(List.of(built.query()), built.params(), repetitions, threshold,
                         request.spec().table(), index, "CUSTOM_QUERY");
+        if (features != null) {
+            experimentRepository.saveQueryFeatures(id, features.access().name(), features.operator().name(),
+                    features.selectivity(), features.coversOrder());
+        }
         return experimentRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Experiment vanished right after creation: " + id));
     }
