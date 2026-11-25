@@ -8,6 +8,7 @@ public record QueryBuilderRunRequest(
         java.util.List<String> indexColumns,
         Integer repetitions,
         Double thresholdFraction,
-        Boolean control
+        Boolean control,
+        com.planshift.experiment.MeasurementMode measurement
 ) {
 }

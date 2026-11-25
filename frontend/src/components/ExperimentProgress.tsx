@@ -1,10 +1,17 @@
-import type { ExperimentPhase } from "../api/types";
-import { PHASE_EXPLANATION, PHASE_LABEL, PHASE_ORDER } from "../phases";
+import type { ExperimentPhase, MeasurementMode } from "../api/types";
+import { PHASE_EXPLANATION, PHASE_LABEL, phasesFor } from "../phases";
 
-export function ExperimentProgress({ currentPhase }: { currentPhase: ExperimentPhase | null }) {
+export function ExperimentProgress({
+  currentPhase,
+  measurement,
+}: {
+  currentPhase: ExperimentPhase | null;
+  measurement?: MeasurementMode;
+}) {
   const phase = currentPhase ?? "PENDING";
-  const currentIndex = PHASE_ORDER.indexOf(phase);
-  const steps = PHASE_ORDER.filter((p) => p !== "DONE");
+  const order = phasesFor(measurement);
+  const currentIndex = order.indexOf(phase);
+  const steps = order.filter((p) => p !== "DONE");
 
   return (
     <section className="panel">

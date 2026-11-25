@@ -14,6 +14,11 @@ public final class IndexNaming {
         return EXPERIMENT_PREFIX + experimentId;
     }
 
+    /** Name of an index someone chose to keep after an experiment. */
+    public static String keptName(long experimentId) {
+        return "planshift_keep_" + experimentId;
+    }
+
     /** True for an experiment's temporary index, so the schema view doesn't report it as a lasting one. */
     public static boolean isTemporary(String indexName) {
         return indexName.startsWith(EXPERIMENT_PREFIX);

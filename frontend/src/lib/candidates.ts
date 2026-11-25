@@ -1,5 +1,5 @@
 import { api } from "../api/client";
-import type { Experiment, QuerySpec } from "../api/types";
+import type { Experiment, MeasurementMode, QuerySpec } from "../api/types";
 
 /**
  * The indexes worth trying for a query: the filter column, the ordering column, both orders of the two, and
@@ -39,12 +39,14 @@ export async function startCandidateRun(
   spec: QuerySpec,
   candidates: string[][],
   repetitions: number,
-  thresholdFraction: number
+  thresholdFraction: number,
+  measurement: MeasurementMode = "ALTERNATING"
 ): Promise<string> {
   const started: Experiment[] = [];
   try {
     for (const columns of candidates) {
-      started.push(await api.runQueryBuilderExperiment(spec, columns, repetitions, thresholdFraction));
+      started.push(
+        await api.runQueryBuilderExperiment(spec, columns, repetitions, thresholdFraction, false, measurement));
     }
   } catch (e) {
     if (started.length === 0) throw e;

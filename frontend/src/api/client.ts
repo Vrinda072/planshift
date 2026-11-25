@@ -1,4 +1,4 @@
-import type { Experiment, ExperimentQueryResult, QuerySpec, TableInfo, WorkloadQuery } from "./types";
+import type { Experiment, ExperimentQueryResult, MeasurementMode, QuerySpec, TableInfo, WorkloadQuery } from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
@@ -42,11 +42,19 @@ export const api = {
   getExperiment: (id: number) => request<Experiment>(`/api/experiments/${id}`),
   // Returns immediately with the experiment in RUNNING state -- the real work
   // happens on the server in the background. Poll getExperiment(id) for progress.
-  startExperiment: (repetitions: number, thresholdFraction: number, control = false) =>
+  startExperiment: (
+    repetitions: number,
+    thresholdFraction: number,
+    control = false,
+    measurement: MeasurementMode = "ALTERNATING"
+  ) =>
     request<Experiment>("/api/experiments", {
       method: "POST",
-      body: JSON.stringify({ repetitions, thresholdFraction, control }),
+      body: JSON.stringify({ repetitions, thresholdFraction, control, measurement }),
     }),
+  getConfig: () => request<{ keepIndexEnabled: boolean }>("/api/config"),
+  keepIndex: (id: number) => request<Experiment>(`/api/experiments/${id}/kept-index`, { method: "POST" }),
+  removeKeptIndex: (id: number) => request<Experiment>(`/api/experiments/${id}/kept-index`, { method: "DELETE" }),
   listRegressions: () => request<ExperimentQueryResult[]>("/api/regressions"),
   listTables: () => request<TableInfo[]>("/api/schema/tables"),
   previewQuery: (spec: QuerySpec) =>
@@ -59,11 +67,12 @@ export const api = {
     indexColumns: string[],
     repetitions: number,
     thresholdFraction: number,
-    control = false
+    control = false,
+    measurement: MeasurementMode = "ALTERNATING"
   ) =>
     request<Experiment>("/api/query-builder/run", {
       method: "POST",
-      body: JSON.stringify({ spec, indexColumns, repetitions, thresholdFraction, control }),
+      body: JSON.stringify({ spec, indexColumns, repetitions, thresholdFraction, control, measurement }),
     }),
   predictImpact: (spec: QuerySpec, indexColumns: string[]) =>
     request<PredictedImpact>("/api/query-builder/predict-impact", {

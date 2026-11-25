@@ -8,6 +8,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -82,6 +83,45 @@ public class IndexChangeService {
             jdbc.update("UPDATE experiments SET index_name = ? WHERE experiment_id = ?", name, experimentId);
         });
         return name;
+    }
+
+    /** Creates a lasting index and records which experiment asked for it, atomically. */
+    public void createKeptIndex(long experimentId, String table, IndexSpec spec) {
+        requireValid(table, spec);
+        String name = IndexNaming.keptName(experimentId);
+        transactions.executeWithoutResult(status -> {
+            jdbc.execute("CREATE INDEX " + quoteIdent(name) + " ON " + quoteIdent(table)
+                    + " (" + columnList(spec) + ")");
+            jdbc.update("UPDATE experiments SET kept_index_name = ? WHERE experiment_id = ?", name, experimentId);
+        });
+    }
+
+    public void dropKeptIndex(long experimentId, String indexName) {
+        transactions.executeWithoutResult(status -> {
+            jdbc.execute("DROP INDEX IF EXISTS " + quoteIdent(indexName));
+            jdbc.update("UPDATE experiments SET kept_index_name = NULL WHERE experiment_id = ?", experimentId);
+        });
+    }
+
+    /**
+     * Runs the work as if the index did not exist: drops it inside a transaction that is always rolled back, so it
+     * is never actually removed and doesn't need rebuilding. Other readers of the table wait while this lasts.
+     */
+    public <T> T withIndexHidden(String indexName, Supplier<T> work) {
+        return rolledBack(() -> {
+            jdbc.execute("DROP INDEX " + quoteIdent(indexName));
+            return work.get();
+        });
+    }
+
+    /** Runs the work in a transaction that is rolled back, the same frame {@link #withIndexHidden} gives it. */
+    public <T> T rolledBack(Supplier<T> work) {
+        return transactions.execute(status -> {
+            status.setRollbackOnly();
+            // Fail rather than queue behind a long-running reader, which would hold up every reader after us.
+            jdbc.execute("SET LOCAL lock_timeout = '10s'");
+            return work.get();
+        });
     }
 
     public long sizeInBytes(String indexName) {

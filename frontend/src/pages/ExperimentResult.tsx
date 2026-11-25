@@ -15,6 +15,8 @@ import { strategyChange } from "../lib/plan";
 import { indexLabel, isControl, typeLabel } from "../lib/index";
 import { evidenceNote, range } from "../lib/timing";
 import { TimingDetail } from "../components/TimingDetail";
+import { IndexPanel } from "../components/IndexPanel";
+import { RUN_ORDER_LABEL } from "../lib/runOrder";
 import { belowNoiseFloor } from "../lib/noise";
 import { IconDownload } from "../components/Icons";
 
@@ -42,6 +44,12 @@ function MetaRow({ experiment }: { experiment: Experiment }) {
         <span className="meta-k">Runs</span>
         <span className="mono">{experiment.repetitions} per query</span>
       </span>
+      {experiment.measurement && (
+        <span className="meta-item">
+          <span className="meta-k">Run order</span>
+          {RUN_ORDER_LABEL[experiment.measurement]}
+        </span>
+      )}
       <span className="meta-item">
         <span className="meta-k">Threshold</span>
         <span className="mono">{(experiment.thresholdFraction * 100).toFixed(0)}%</span>
@@ -77,7 +85,8 @@ export function ExperimentResult() {
     if (!experiment) return;
     setRerunning(true);
     try {
-      const started = await api.startExperiment(experiment.repetitions, experiment.thresholdFraction);
+      const started = await api.startExperiment(
+        experiment.repetitions, experiment.thresholdFraction, false, experiment.measurement);
       navigate(`/experiments/${started.experimentId}`);
     } finally {
       setRerunning(false);
@@ -121,7 +130,7 @@ export function ExperimentResult() {
         <PageHeader title={`Experiment #${experiment.experimentId}`}>
           <MetaRow experiment={experiment} />
         </PageHeader>
-        <ExperimentProgress currentPhase={experiment.currentPhase} />
+        <ExperimentProgress currentPhase={experiment.currentPhase} measurement={experiment.measurement} />
       </div>
     );
   }
@@ -259,6 +268,8 @@ export function ExperimentResult() {
           </table>
         </div>
       </section>
+
+      <IndexPanel experiment={experiment} />
     </div>
   );
 }

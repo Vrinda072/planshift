@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import type { Experiment } from "../api/types";
+import type { Experiment, MeasurementMode } from "../api/types";
+import { RunOrderSelect } from "../components/RunOrderSelect";
 import { changeClassName, formatChangeText, formatDate } from "../format";
 import { PageHeader } from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
@@ -26,6 +27,7 @@ export function Experiments() {
   const [running, setRunning] = useState(false);
   const [repetitions, setRepetitions] = useState(5);
   const [thresholdPercent, setThresholdPercent] = useState(20);
+  const [measurement, setMeasurement] = useState<MeasurementMode>("ALTERNATING");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "id", dir: -1 });
@@ -43,7 +45,7 @@ export function Experiments() {
     try {
       // Returns almost immediately with the experiment in RUNNING state; the
       // result page itself polls for live progress from there.
-      const result = await api.startExperiment(repetitions, thresholdPercent / 100, control);
+      const result = await api.startExperiment(repetitions, thresholdPercent / 100, control, measurement);
       navigate(`/experiments/${result.experimentId}`);
     } catch (e) {
       setError((e as Error).message);
@@ -95,6 +97,10 @@ export function Experiments() {
               <span>Threshold %</span>
               <input className="input input-num" type="number" min={1} max={100} value={thresholdPercent}
                 onChange={(e) => setThresholdPercent(Number(e.target.value))} disabled={running} aria-label="Regression threshold percent" />
+            </label>
+            <label className="run-inline-field">
+              <span>Run order</span>
+              <RunOrderSelect value={measurement} onChange={setMeasurement} disabled={running} />
             </label>
             <button className="btn" onClick={() => runExperiment(true)} disabled={running}
               title="Run the same procedure with no change, to see how much timings vary on their own">

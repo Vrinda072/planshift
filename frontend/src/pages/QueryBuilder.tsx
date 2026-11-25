@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { PredictedImpact } from "../api/client";
-import type { QuerySpec, TableInfo } from "../api/types";
+import type { MeasurementMode, QuerySpec, TableInfo } from "../api/types";
+import { RunOrderSelect } from "../components/RunOrderSelect";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { CopyButton } from "../components/CopyButton";
 import { ImportDataPanel } from "../components/ImportDataPanel";
@@ -34,6 +35,7 @@ export function QueryBuilder() {
   const [indexColumns, setIndexColumns] = useState<string[]>([]);
   const [repetitions, setRepetitions] = useState(5);
   const [thresholdPercent, setThresholdPercent] = useState(20);
+  const [measurement, setMeasurement] = useState<MeasurementMode>("ALTERNATING");
 
   const [previewSql, setPreviewSql] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -126,7 +128,8 @@ export function QueryBuilder() {
     setRunning(true);
     setActionError(null);
     try {
-      const result = await api.runQueryBuilderExperiment(spec, effectiveIndexColumns, repetitions, thresholdPercent / 100, control);
+      const result = await api.runQueryBuilderExperiment(
+        spec, effectiveIndexColumns, repetitions, thresholdPercent / 100, control, measurement);
       navigate(`/experiments/${result.experimentId}`);
     } catch (e) {
       setActionError((e as Error).message);
@@ -141,7 +144,7 @@ export function QueryBuilder() {
     setRunning(true);
     setActionError(null);
     try {
-      navigate(await startCandidateRun(spec, toTry, repetitions, thresholdPercent / 100));
+      navigate(await startCandidateRun(spec, toTry, repetitions, thresholdPercent / 100, measurement));
     } catch (e) {
       setActionError((e as Error).message);
     } finally {
@@ -392,6 +395,11 @@ export function QueryBuilder() {
                       <label>Threshold (%)</label>
                       <input className="input input-num" type="number" min={1} max={100} value={thresholdPercent} onChange={(e) => setThresholdPercent(Number(e.target.value))} />
                     </div>
+                  </div>
+
+                  <div className="field" style={{ marginTop: 12 }}>
+                    <span className="label">Run order</span>
+                    <RunOrderSelect value={measurement} onChange={setMeasurement} disabled={running} />
                   </div>
 
                   <div className="aside-actions">

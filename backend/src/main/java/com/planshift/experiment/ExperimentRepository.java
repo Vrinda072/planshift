@@ -24,12 +24,21 @@ public class ExperimentRepository {
     public long insertExperiment(String experimentType, int datasetCustomers, int datasetOrders,
                                   long datasetSeed, int repetitions, double thresholdFraction,
                                   String targetTable, String targetColumn) {
+        return insertExperiment(experimentType, datasetCustomers, datasetOrders, datasetSeed, repetitions,
+                thresholdFraction, targetTable, targetColumn, MeasurementMode.BLOCKS, null);
+    }
+
+    public long insertExperiment(String experimentType, int datasetCustomers, int datasetOrders,
+                                  long datasetSeed, int repetitions, double thresholdFraction,
+                                  String targetTable, String targetColumn, MeasurementMode measurement,
+                                  String ownerId) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
                     "INSERT INTO experiments (experiment_type, dataset_customers, dataset_orders, dataset_seed, "
-                            + "repetitions, threshold_fraction, status, current_phase, target_table, target_column) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "repetitions, threshold_fraction, status, current_phase, target_table, target_column, "
+                            + "measurement_mode, owner_id, heartbeat_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())",
                     new String[]{"experiment_id"});
             ps.setString(1, experimentType);
             ps.setInt(2, datasetCustomers);
@@ -41,25 +50,63 @@ public class ExperimentRepository {
             ps.setString(8, ExperimentPhase.PENDING.name());
             ps.setString(9, targetTable);
             ps.setString(10, targetColumn);
+            ps.setString(11, measurement.name());
+            ps.setString(12, ownerId);
             return ps;
         }, keyHolder);
         return keyHolder.getKey().longValue();
     }
 
-    public void markRunning(long experimentId) {
-        jdbc.update("UPDATE experiments SET status = ? WHERE experiment_id = ?",
-                ExperimentStatus.RUNNING.name(), experimentId);
+    /** False if the experiment is no longer queued, because someone has given up on it. */
+    public boolean markRunning(long experimentId) {
+        return jdbc.update("UPDATE experiments SET status = ? WHERE experiment_id = ? AND status = ?",
+                ExperimentStatus.RUNNING.name(), experimentId, ExperimentStatus.QUEUED.name()) == 1;
     }
 
     public void deleteExperiment(long experimentId) {
         jdbc.update("DELETE FROM experiments WHERE experiment_id = ?", experimentId);
     }
 
-    /** Marks everything still queued or running as failed. Only safe when no worker can be running, i.e. at startup. */
-    public int failUnfinished() {
-        return jdbc.update("UPDATE experiments SET status = ?, current_phase = ? WHERE status IN (?, ?)",
-                ExperimentStatus.FAILED.name(), ExperimentPhase.DONE.name(),
-                ExperimentStatus.QUEUED.name(), ExperimentStatus.RUNNING.name());
+    /** Only safe while holding the database lock: a live experiment is never RUNNING without it. */
+    public int failRunning() {
+        return jdbc.update("UPDATE experiments SET status = ?, current_phase = ? WHERE status = ?",
+                ExperimentStatus.FAILED.name(), ExperimentPhase.DONE.name(), ExperimentStatus.RUNNING.name());
+    }
+
+    /** Queued experiments of other instances that have stopped sending heartbeats. */
+    public int failAbandonedQueued(String ownerId, int staleAfterSeconds) {
+        return jdbc.update("UPDATE experiments SET status = ?, current_phase = ? WHERE status = ? "
+                        + "AND owner_id IS DISTINCT FROM ? "
+                        + "AND (heartbeat_at IS NULL OR heartbeat_at < now() - make_interval(secs => ?))",
+                ExperimentStatus.FAILED.name(), ExperimentPhase.DONE.name(), ExperimentStatus.QUEUED.name(),
+                ownerId, staleAfterSeconds);
+    }
+
+    public void heartbeat(String ownerId) {
+        jdbc.update("UPDATE experiments SET heartbeat_at = now() WHERE owner_id = ? AND status IN (?, ?)",
+                ownerId, ExperimentStatus.QUEUED.name(), ExperimentStatus.RUNNING.name());
+    }
+
+    public int countUnfinishedOwnedByOthers(String ownerId) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM experiments WHERE status IN (?, ?) "
+                        + "AND owner_id IS DISTINCT FROM ?",
+                Integer.class, ExperimentStatus.QUEUED.name(), ExperimentStatus.RUNNING.name(), ownerId);
+        return count == null ? 0 : count;
+    }
+
+    /** Forgets kept indexes on a table, for when the table itself is replaced. */
+    public void forgetKeptIndexes(String table) {
+        jdbc.update("UPDATE experiments SET kept_index_name = NULL WHERE target_table = ?", table);
+    }
+
+    public void saveKeptIndex(long experimentId, String indexName) {
+        jdbc.update("UPDATE experiments SET kept_index_name = ? WHERE experiment_id = ?", indexName, experimentId);
+    }
+
+    /** The experiment, if any, that already keeps an index on the same columns of the same table. */
+    public Optional<Long> findKeeping(String table, String columns) {
+        return jdbc.queryForList("SELECT experiment_id FROM experiments WHERE kept_index_name IS NOT NULL "
+                + "AND target_table = ? AND target_column = ?", Long.class, table, columns).stream().findFirst();
     }
 
     public void updatePhase(long experimentId, ExperimentPhase phase) {
@@ -212,6 +259,8 @@ public class ExperimentRepository {
                 rs.getDouble("threshold_fraction"),
                 rs.getObject("index_size_bytes", Long.class),
                 rs.getObject("index_build_ms", Double.class),
+                MeasurementMode.valueOf(rs.getString("measurement_mode")),
+                rs.getString("kept_index_name"),
                 ExperimentStatus.valueOf(rs.getString("status")),
                 phase != null ? ExperimentPhase.valueOf(phase) : null,
                 overallChange,

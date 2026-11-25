@@ -1,6 +1,8 @@
 package com.planshift.controller;
 
+import com.planshift.experiment.KeepIndexDisabledException;
 import com.planshift.experiment.QueueFullException;
+import com.planshift.lock.DatabaseBusyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -40,6 +42,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(QueueFullException.class)
     public ResponseEntity<Map<String, String>> handleQueueFull(QueueFullException e) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(DatabaseBusyException.class)
+    public ResponseEntity<Map<String, String>> handleBusy(DatabaseBusyException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(KeepIndexDisabledException.class)
+    public ResponseEntity<Map<String, String>> handleKeepDisabled(KeepIndexDisabledException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
     }
 
     /**

@@ -4,6 +4,12 @@ import com.planshift.benchmark.BenchmarkService;
 import com.planshift.schema.IndexNaming;
 import com.planshift.workload.QueryCategory;
 import com.planshift.workload.WorkloadQuery;
+import com.planshift.dataimport.CsvImportService;
+import com.planshift.lock.DatabaseBusyException;
+import com.planshift.lock.DatabaseLock;
+import com.planshift.queryplan.ExplainService;
+import org.springframework.mock.web.MockMultipartFile;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +60,18 @@ class ExperimentIsolationIT {
     private IndexChangeService indexChangeService;
 
     @Autowired
+    private DatabaseLock databaseLock;
+
+    @Autowired
+    private CsvImportService csvImportService;
+
+    @Autowired
+    private KeptIndexService keptIndexService;
+
+    @Autowired
+    private ExplainService explainService;
+
+    @Autowired
     private JdbcTemplate jdbc;
 
     private static final WorkloadQuery QUERY = new WorkloadQuery(
@@ -80,7 +98,7 @@ class ExperimentIsolationIT {
 
     private long start(String column) {
         return experimentService.startAsync(List.of(QUERY), Map.of(), 2, 0.2, "iso_probe",
-                IndexSpec.of(column), "CUSTOM_QUERY");
+                IndexSpec.of(column), "CUSTOM_QUERY", MeasurementMode.BLOCKS);
     }
 
     private ExperimentStatus status(long id) {
@@ -163,7 +181,8 @@ class ExperimentIsolationIT {
             return invocation.callRealMethod();
         }).when(benchmarkService).executeRepeated(any(), any(), anyInt());
 
-        long id = experimentService.startControlAsync(List.of(QUERY), Map.of(), 5, 0.0, "iso_probe");
+        long id = experimentService.startControlAsync(List.of(QUERY), Map.of(), 5, 0.0, "iso_probe",
+                MeasurementMode.BLOCKS);
 
         assertThat(awaitFinished(id)).isEqualTo(ExperimentStatus.COMPLETED);
         assertThat(seen).hasSize(3).allMatch(List::isEmpty);
@@ -202,6 +221,128 @@ class ExperimentIsolationIT {
 
         recovery.recover();
 
+        assertThat(indexNames()).containsExactly("idx_planshift_iso_probe_b", "my_own_idx");
+    }
+
+    @Test
+    void alternatingRunsTakeTurnsWithAndWithoutOneIndex() throws Exception {
+        List<List<String>> seen = new CopyOnWriteArrayList<>();
+        doAnswer(invocation -> {
+            seen.add(new ArrayList<>(temporaryIndexes()));
+            return invocation.callRealMethod();
+        }).when(benchmarkService).executeRepeated(any(), any(), anyInt());
+
+        long id = experimentService.startAsync(List.of(QUERY), Map.of(), 3, 0.2, "iso_probe", IndexSpec.of("a"),
+                "CUSTOM_QUERY", MeasurementMode.ALTERNATING);
+
+        assertThat(awaitFinished(id)).isEqualTo(ExperimentStatus.COMPLETED);
+        List<String> with = List.of(IndexNaming.experimentName(id));
+        List<String> without = List.of();
+        // Rounds go before/after, after/before, before/after, as each run itself sees the database.
+        assertThat(seen).containsExactly(without, with, with, without, without, with);
+        Experiment experiment = experimentRepository.findById(id).orElseThrow();
+        assertThat(experiment.measurement()).isEqualTo(MeasurementMode.ALTERNATING);
+        ExperimentQueryResult result = experiment.queryResults().get(0);
+        assertThat(result.timing().baselineSamplesMs()).hasSize(3);
+        assertThat(result.timing().candidateSamplesMs()).hasSize(3);
+        assertThat(result.baselinePlanJson()).contains("Seq Scan").doesNotContain("planshift_exp_");
+        assertThat(result.candidatePlanJson()).contains(IndexNaming.experimentName(id));
+        assertThat(indexNames()).containsExactly("idx_planshift_iso_probe_b", "my_own_idx");
+    }
+
+    @Test
+    void failureWhileTheIndexIsHiddenStillRemovesIt() throws Exception {
+        doAnswer(invocation -> {
+            if (temporaryIndexes().isEmpty()) {
+                throw new IllegalStateException("boom while the index is hidden");
+            }
+            return invocation.callRealMethod();
+        }).when(benchmarkService).executeRepeated(any(), any(), anyInt());
+
+        long id = experimentService.startAsync(List.of(QUERY), Map.of(), 2, 0.2, "iso_probe", IndexSpec.of("a"),
+                "CUSTOM_QUERY", MeasurementMode.ALTERNATING);
+
+        assertThat(awaitFinished(id)).isEqualTo(ExperimentStatus.FAILED);
+        assertThat(indexNames()).containsExactly("idx_planshift_iso_probe_b", "my_own_idx");
+    }
+
+    @Test
+    void hidingAnIndexDoesNotStopPostgresPlanningInParallel() {
+        jdbc.execute("DROP TABLE IF EXISTS iso_big");
+        jdbc.execute("CREATE TABLE iso_big (a INT, filler TEXT)");
+        jdbc.execute("INSERT INTO iso_big SELECT g, repeat('x', 100) FROM generate_series(1, 300000) g");
+        jdbc.execute("ANALYZE iso_big");
+        jdbc.execute("CREATE INDEX iso_big_idx ON iso_big (a)");
+        WorkloadQuery count = new WorkloadQuery("BIG", "count", QueryCategory.values()[0], "probe",
+                "SELECT COUNT(*) FROM iso_big WHERE filler <> ''");
+
+        String hidden = indexChangeService.withIndexHidden("iso_big_idx",
+                () -> explainService.capture(count, Map.of()).rawJson());
+
+        // If a transaction that had dropped an index could not use workers, every "before" run would be handicapped.
+        assertThat(hidden).contains("\"Gather\"").contains("\"Workers Launched\": 2");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pg_indexes WHERE indexname = 'iso_big_idx'",
+                Integer.class)).isEqualTo(1);
+        jdbc.execute("DROP TABLE iso_big");
+    }
+
+    @Test
+    void anotherInstancesRunningExperimentIsLeftAloneUntilItLetsGo() throws Exception {
+        long theirs = experimentRepository.insertExperiment("CUSTOM_QUERY", 0, 0, 42L, 2, 0.2, "iso_probe", "a");
+        experimentRepository.markRunning(theirs);
+        long mine;
+        // Holding the lock is what a second instance in the middle of a run looks like from here.
+        try (DatabaseLock.Held ignored = databaseLock.acquire()) {
+            indexChangeService.createExperimentIndex(theirs, "iso_probe", IndexSpec.of("a"));
+
+            recovery.recover();
+            mine = start("a");
+            Thread.sleep(300);
+
+            assertThat(status(theirs)).isEqualTo(ExperimentStatus.RUNNING);
+            assertThat(status(mine)).isEqualTo(ExperimentStatus.QUEUED);
+            assertThat(temporaryIndexes()).containsExactly(IndexNaming.experimentName(theirs));
+        }
+        // Once the lock is free its row is provably orphaned, and our run cleans up before measuring.
+        assertThat(awaitFinished(mine)).isEqualTo(ExperimentStatus.COMPLETED);
+        assertThat(status(theirs)).isEqualTo(ExperimentStatus.FAILED);
+        assertThat(indexNames()).containsExactly("idx_planshift_iso_probe_b", "my_own_idx");
+    }
+
+    @Test
+    void queuedExperimentsAreOnlyGivenUpOnOnceTheirOwnerGoesQuiet() {
+        long alive = experimentRepository.insertExperiment("CUSTOM_QUERY", 0, 0, 42L, 2, 0.2, "iso_probe", "a",
+                MeasurementMode.BLOCKS, "another-instance");
+        long quiet = experimentRepository.insertExperiment("CUSTOM_QUERY", 0, 0, 42L, 2, 0.2, "iso_probe", "a",
+                MeasurementMode.BLOCKS, "dead-instance");
+        jdbc.update("UPDATE experiments SET heartbeat_at = now() - interval '10 minutes' WHERE experiment_id = ?",
+                quiet);
+
+        recovery.recover();
+
+        assertThat(status(alive)).isEqualTo(ExperimentStatus.QUEUED);
+        assertThat(status(quiet)).isEqualTo(ExperimentStatus.FAILED);
+        experimentRepository.failExperiment(alive);
+    }
+
+    @Test
+    void importCannotReplaceATableWhileTheDatabaseIsInUse() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "a.csv", "text/csv",
+                "a,b\n1,2\n".getBytes(StandardCharsets.UTF_8));
+        try (DatabaseLock.Held ignored = databaseLock.acquire()) {
+            assertThatThrownBy(() -> csvImportService.importCsv("iso_probe", file))
+                    .isInstanceOf(DatabaseBusyException.class);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM iso_probe", Integer.class)).isEqualTo(2000);
+        assertThat(csvImportService.importCsv("iso_probe", file).rowCount()).isEqualTo(1);
+    }
+
+    @Test
+    void keepingIndexesIsOffUnlessTurnedOn() throws Exception {
+        long id = start("a");
+        awaitFinished(id);
+
+        assertThatThrownBy(() -> keptIndexService.keep(id)).isInstanceOf(KeepIndexDisabledException.class);
         assertThat(indexNames()).containsExactly("idx_planshift_iso_probe_b", "my_own_idx");
     }
 }

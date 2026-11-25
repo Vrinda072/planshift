@@ -9,8 +9,12 @@ export type ExperimentPhase =
   | "WARMING_UP_CANDIDATE"
   | "MEASURING_CANDIDATE"
   | "REMEASURING_BASELINE"
+  | "ALTERNATING_RUNS"
   | "COMPARING_RESULTS"
   | "DONE";
+
+/** The order the timed runs are taken in. */
+export type MeasurementMode = "BLOCKS" | "ALTERNATING";
 
 export interface WorkloadQuery {
   id: string;
@@ -82,6 +86,9 @@ export interface Experiment {
   /** Cost of the tested index. Null for control runs and older results. */
   indexSizeBytes?: number | null;
   indexBuildMs?: number | null;
+  measurement?: MeasurementMode;
+  /** Set when a lasting index was created from this result. */
+  keptIndexName?: string | null;
   status: ExperimentStatus;
   currentPhase: ExperimentPhase | null;
   overallPercentageChange: number | null;

@@ -1,5 +1,8 @@
 package com.planshift.dataimport;
 
+import com.planshift.experiment.ExperimentRepository;
+import com.planshift.lock.DatabaseBusyException;
+import com.planshift.lock.DatabaseLock;
 import org.postgresql.PGConnection;
 import org.postgresql.copy.CopyManager;
 import org.slf4j.Logger;
@@ -42,7 +45,13 @@ public class CsvImportService {
     private final JdbcTemplate jdbc;
     private final DataSource dataSource;
 
-    public CsvImportService(JdbcTemplate jdbc, DataSource dataSource) {
+    private final DatabaseLock databaseLock;
+    private final ExperimentRepository experimentRepository;
+
+    public CsvImportService(JdbcTemplate jdbc, DataSource dataSource, DatabaseLock databaseLock,
+                            ExperimentRepository experimentRepository) {
+        this.databaseLock = databaseLock;
+        this.experimentRepository = experimentRepository;
         this.jdbc = jdbc;
         this.dataSource = dataSource;
     }
@@ -68,12 +77,16 @@ public class CsvImportService {
                 columnTypes = inferColumnTypes(columnNames.size(), reader);
             }
 
-            createTable(tableName, columnNames, columnTypes);
-            loadViaCopy(tableName, temp);
+            // Replacing a table under a running experiment would change what it is measuring.
+            try (DatabaseLock.Held ignored = databaseLock.tryAcquire().orElseThrow(DatabaseBusyException::new)) {
+                createTable(tableName, columnNames, columnTypes);
+                experimentRepository.forgetKeptIndexes(tableName);
+                loadViaCopy(tableName, temp);
 
-            int rowCount = jdbc.queryForObject("SELECT COUNT(*) FROM " + quoteIdent(tableName), Integer.class);
-            log.info("Imported CSV into table {}: {} columns, {} rows", tableName, columnNames.size(), rowCount);
-            return new ImportResult(tableName, columnNames, rowCount);
+                int rowCount = jdbc.queryForObject("SELECT COUNT(*) FROM " + quoteIdent(tableName), Integer.class);
+                log.info("Imported CSV into table {}: {} columns, {} rows", tableName, columnNames.size(), rowCount);
+                return new ImportResult(tableName, columnNames, rowCount);
+            }
         } finally {
             java.nio.file.Files.deleteIfExists(temp);
         }

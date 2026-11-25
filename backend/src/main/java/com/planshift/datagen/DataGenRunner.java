@@ -1,5 +1,6 @@
 package com.planshift.datagen;
 
+import com.planshift.lock.DatabaseLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,7 +46,10 @@ public class DataGenRunner implements ApplicationRunner {
     @Value("${planshift.dataset.max-items-per-order}")
     private int defaultMaxItemsPerOrder;
 
-    public DataGenRunner(DataGeneratorService generatorService) {
+    private final DatabaseLock databaseLock;
+
+    public DataGenRunner(DataGeneratorService generatorService, DatabaseLock databaseLock) {
+        this.databaseLock = databaseLock;
         this.generatorService = generatorService;
     }
 
@@ -67,7 +71,11 @@ public class DataGenRunner implements ApplicationRunner {
                 intOption(args, "max-items"));
 
         log.info("Starting data generation, scale={}, config={}", scale, config);
-        DataGeneratorService.GenerationResult result = generatorService.generate(config);
+        DataGeneratorService.GenerationResult result;
+        // Waits for any experiment to finish: generating replaces the tables experiments measure.
+        try (DatabaseLock.Held ignored = databaseLock.acquire()) {
+            result = generatorService.generate(config);
+        }
         log.info("Generated {} customers, {} products, {} orders, {} order_items in {} ms",
                 result.customers(), result.products(), result.orders(), result.orderItems(), result.elapsedMs());
     }

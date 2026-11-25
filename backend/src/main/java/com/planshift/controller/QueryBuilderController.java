@@ -4,6 +4,7 @@ import com.planshift.experiment.Experiment;
 import com.planshift.experiment.ExperimentRepository;
 import com.planshift.experiment.IndexExperimentService;
 import com.planshift.experiment.IndexSpec;
+import com.planshift.experiment.MeasurementMode;
 import com.planshift.experiment.RegressionDetector;
 import com.planshift.impact.ImpactPredictionService;
 import com.planshift.impact.PredictedImpact;
@@ -73,11 +74,12 @@ public class QueryBuilderController {
         // Worked out before submitting, so a bad column is rejected without leaving a run behind.
         QueryFeatures features = control ? null : impactPredictionService.describe(request.spec(), index);
 
+        MeasurementMode measurement = request.measurement() != null ? request.measurement() : MeasurementMode.DEFAULT;
         long id = control
                 ? experimentService.startControlAsync(List.of(built.query()), built.params(), repetitions, threshold,
-                        request.spec().table())
+                        request.spec().table(), measurement)
                 : experimentService.startAsync(List.of(built.query()), built.params(), repetitions, threshold,
-                        request.spec().table(), index, "CUSTOM_QUERY");
+                        request.spec().table(), index, "CUSTOM_QUERY", measurement);
         if (features != null) {
             experimentRepository.saveQueryFeatures(id, features.access().name(), features.operator().name(),
                     features.selectivity(), features.coversOrder());

@@ -90,6 +90,17 @@ ALTER TABLE experiments ADD COLUMN IF NOT EXISTS query_covers_order BOOLEAN;
 ALTER TABLE experiments ADD COLUMN IF NOT EXISTS index_size_bytes BIGINT;
 ALTER TABLE experiments ADD COLUMN IF NOT EXISTS index_build_ms DOUBLE PRECISION;
 
+-- The order the timed runs were taken in: BLOCKS or ALTERNATING.
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS measurement_mode VARCHAR(12) NOT NULL DEFAULT 'BLOCKS';
+
+-- Which application instance queued the experiment, and when it last said it was still looking after it. Used to
+-- tell an abandoned experiment from one that another live instance is about to run.
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS owner_id VARCHAR(36);
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMP;
+
+-- A permanent index created from this experiment's result with "keep index". Never dropped by cleanup.
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS kept_index_name VARCHAR(63);
+
 CREATE TABLE IF NOT EXISTS experiment_query_results (
     id                   BIGSERIAL PRIMARY KEY,
     experiment_id        BIGINT         NOT NULL REFERENCES experiments (experiment_id),

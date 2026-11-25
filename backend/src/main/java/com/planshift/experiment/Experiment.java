@@ -16,6 +16,8 @@ public record Experiment(
         double thresholdFraction,
         Long indexSizeBytes,
         Double indexBuildMs,
+        MeasurementMode measurement,
+        String keptIndexName,
         ExperimentStatus status,
         ExperimentPhase currentPhase,
         Double overallPercentageChange,
