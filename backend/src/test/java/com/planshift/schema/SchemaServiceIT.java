@@ -46,7 +46,7 @@ class SchemaServiceIT {
         jdbc.execute("CREATE TABLE schema_probe (id BIGINT PRIMARY KEY, city TEXT, score INT)");
         jdbc.execute("INSERT INTO schema_probe SELECT g, 'c' || (g % 5), g FROM generate_series(1, 40) g");
         jdbc.execute("CREATE INDEX my_city_idx ON schema_probe (city)");
-        jdbc.execute("CREATE INDEX idx_planshift_schema_probe_score ON schema_probe (score)");
+        jdbc.execute("CREATE INDEX planshift_exp_999 ON schema_probe (score)");
 
         TableInfo info = table("schema_probe");
 

@@ -8,6 +8,7 @@ import { PageHeader } from "../components/PageHeader";
 import { RunBars } from "../components/RunBars";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { STATUS_LABEL } from "../lib/status";
 import { indexLabel } from "../lib/index";
 
 const TREND_RUNS = 12;
@@ -47,7 +48,9 @@ export function Overview() {
   );
 
   const best = completed.length ? Math.min(...completed.map((e) => e.overallPercentageChange as number)) : null;
-  const running = (experiments ?? []).find((e) => e.status === "RUNNING");
+  // The running one if there is one, otherwise whatever is next in line.
+  const running =
+    (experiments ?? []).find((e) => e.status === "RUNNING") ?? (experiments ?? []).find((e) => e.status === "QUEUED");
 
   return (
     <div>
@@ -65,7 +68,9 @@ export function Overview() {
 
       {running && (
         <div className="notice">
-          <span className="status running">Experiment #{running.experimentId} is running</span>
+          <span className={`status ${running.status.toLowerCase()}`}>
+            Experiment #{running.experimentId} is {STATUS_LABEL[running.status].toLowerCase()}
+          </span>
           <Link to={`/experiments/${running.experimentId}`}>Watch it</Link>
         </div>
       )}
@@ -180,7 +185,7 @@ export function Overview() {
                     <td className="sub">{formatDate(exp.createdAt)}</td>
                     <td>
                       <span className={`status ${exp.status.toLowerCase()}`}>
-                        {exp.status === "COMPLETED" ? "Completed" : exp.status === "RUNNING" ? "Running" : "Failed"}
+                        {STATUS_LABEL[exp.status]}
                       </span>
                     </td>
                     <td className="num">

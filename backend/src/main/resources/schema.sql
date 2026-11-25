@@ -70,6 +70,15 @@ ALTER TABLE experiments ADD COLUMN IF NOT EXISTS target_column VARCHAR(100);
 -- target_column holds a comma-separated list for composite indexes.
 ALTER TABLE experiments ALTER COLUMN target_column TYPE VARCHAR(300);
 
+-- index_name is the temporary index an experiment currently owns. It is written in the same transaction as the
+-- CREATE INDEX and cleared in the same transaction as the DROP, so a non-null value means "this still exists".
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS index_name VARCHAR(63);
+
+-- Rows from before index_name existed left their indexes in place. Adding the column with DEFAULT TRUE marks
+-- exactly those rows for a one-time cleanup; every later row gets FALSE.
+ALTER TABLE experiments ADD COLUMN IF NOT EXISTS legacy_index_pending BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE experiments ALTER COLUMN legacy_index_pending SET DEFAULT FALSE;
+
 CREATE TABLE IF NOT EXISTS experiment_query_results (
     id                   BIGSERIAL PRIMARY KEY,
     experiment_id        BIGINT         NOT NULL REFERENCES experiments (experiment_id),

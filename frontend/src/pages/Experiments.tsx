@@ -6,14 +6,16 @@ import { changeClassName, formatChangeText, formatDate } from "../format";
 import { PageHeader } from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { STATUS_LABEL } from "../lib/status";
 import { indexLabel } from "../lib/index";
 
 type SortKey = "id" | "ran" | "result";
-type StatusFilter = "ALL" | "COMPLETED" | "RUNNING" | "FAILED";
+type StatusFilter = "ALL" | "COMPLETED" | "QUEUED" | "RUNNING" | "FAILED";
 
 const FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "ALL", label: "All" },
   { value: "COMPLETED", label: "Completed" },
+  { value: "QUEUED", label: "Queued" },
   { value: "RUNNING", label: "Running" },
   { value: "FAILED", label: "Failed" },
 ];
@@ -77,7 +79,7 @@ export function Experiments() {
         title="Experiments"
         sub={
           <>
-            Each run drops, then adds, an index on <code>orders.customer_id</code> and times the full 10-query
+            Each run times the workload, then again with a temporary index on <code>orders.customer_id</code> and times the full 10-query
             workload both ways. For your own query and column, use the{" "}
             <Link to="/query-builder" style={{ color: "var(--accent)" }}>query builder</Link>.
           </>
@@ -173,7 +175,7 @@ export function Experiments() {
                     <td className="sub">{formatDate(exp.createdAt)}</td>
                     <td>
                       <span className={`status ${exp.status.toLowerCase()}`}>
-                        {exp.status === "COMPLETED" ? "Completed" : exp.status === "RUNNING" ? "Running" : "Failed"}
+                        {STATUS_LABEL[exp.status]}
                       </span>
                     </td>
                     <td className="num">

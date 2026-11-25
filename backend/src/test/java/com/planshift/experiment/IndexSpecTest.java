@@ -31,6 +31,5 @@ class IndexSpecTest {
         String longA = IndexNaming.managedName("t", List.of("c".repeat(30), "d".repeat(30)));
         String longB = IndexNaming.managedName("t", List.of("c".repeat(30), "e".repeat(30)));
         assertThat(longA).hasSizeLessThanOrEqualTo(63).isNotEqualTo(longB);
-        assertThat(IndexNaming.isManaged(longA)).isTrue();
     }
 }

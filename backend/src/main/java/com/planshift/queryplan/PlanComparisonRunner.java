@@ -43,13 +43,21 @@ public class PlanComparisonRunner implements ApplicationRunner {
         WorkloadQuery query = WorkloadCatalog.byId(args.getOptionValues("compare-plan").get(0));
         var params = WorkloadCatalog.defaultParams();
 
-        indexChangeService.dropCustomerIdIndex();
+        boolean alreadyThere = indexChangeService.customerIdIndexExists();
+        if (alreadyThere) {
+            log.warn("orders.customer_id is already indexed under PLANSHIFT's name; leaving it alone");
+            return;
+        }
         ExplainCapture baselineCapture = explainService.capture(query, params);
         PlanNode baselinePlan = planParser.parse(baselineCapture.planRoot());
 
         indexChangeService.addCustomerIdIndex();
-        ExplainCapture candidateCapture = explainService.capture(query, params);
-        PlanNode candidatePlan = planParser.parse(candidateCapture.planRoot());
+        PlanNode candidatePlan;
+        try {
+            candidatePlan = planParser.parse(explainService.capture(query, params).planRoot());
+        } finally {
+            indexChangeService.dropCustomerIdIndex();
+        }
 
         List<PlanDiff> diffs = planComparator.compare(baselinePlan, candidatePlan);
 

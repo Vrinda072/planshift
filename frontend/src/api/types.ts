@@ -1,5 +1,5 @@
 export type RegressionStatus = "IMPROVED" | "UNCHANGED" | "REGRESSED";
-export type ExperimentStatus = "RUNNING" | "COMPLETED" | "FAILED";
+export type ExperimentStatus = "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
 export type ExperimentPhase =
   | "PENDING"
   | "DROPPING_INDEX"

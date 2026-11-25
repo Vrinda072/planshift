@@ -21,11 +21,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
- * Orchestrates an index-toggle experiment: runs a workload with an index on
- * a chosen table.column absent (baseline), then present (candidate),
- * capturing timings and execution plans, and persists the full result.
+ * Orchestrates an index experiment: runs a workload without a new index
+ * (baseline), creates a temporary one on the chosen columns, runs it again
+ * (candidate), removes it, and persists timings, plans and the comparison.
+ * Indexes that already exist are left alone and are part of both sides.
  *
  * Generic over table/column and query list, so this same orchestrator
  * backs both the built-in orders.customer_id experiment and arbitrary
@@ -79,8 +81,8 @@ public class IndexExperimentService {
     }
 
     /**
-     * Creates the experiment row immediately (status RUNNING, phase PENDING)
-     * and submits the real work to run in the background. Returns the new
+     * Creates the experiment row immediately (status QUEUED, phase PENDING)
+     * and queues the real work for the background worker. Returns the new
      * experiment id right away.
      */
     public long startAsync(List<WorkloadQuery> queries, Map<String, Object> params,
@@ -99,8 +101,13 @@ public class IndexExperimentService {
                 experimentType, datasetCustomers, datasetOrders, DATASET_SEED, repetitions, thresholdFraction,
                 indexTable, index.columnsKey());
 
-        executorService.submit(() -> runBody(experimentId, queries, params, repetitions, thresholdFraction,
-                indexTable, index));
+        try {
+            executorService.execute(() -> runBody(experimentId, queries, params, repetitions, thresholdFraction,
+                    indexTable, index));
+        } catch (RejectedExecutionException e) {
+            experimentRepository.deleteExperiment(experimentId);
+            throw new QueueFullException();
+        }
         return experimentId;
     }
 
@@ -115,7 +122,7 @@ public class IndexExperimentService {
     private void awaitCompletion(long experimentId) {
         while (true) {
             Experiment experiment = experimentRepository.findById(experimentId).orElseThrow();
-            if (experiment.status() != ExperimentStatus.RUNNING) {
+            if (experiment.status() == ExperimentStatus.COMPLETED || experiment.status() == ExperimentStatus.FAILED) {
                 return;
             }
             try {
@@ -129,9 +136,12 @@ public class IndexExperimentService {
 
     private void runBody(long experimentId, List<WorkloadQuery> queries, Map<String, Object> params,
                           int repetitions, double thresholdFraction, String indexTable, IndexSpec index) {
+        Double overallPercentageChange = null;
         try {
+            experimentRepository.markRunning(experimentId);
             experimentRepository.updatePhase(experimentId, ExperimentPhase.DROPPING_INDEX);
-            indexChangeService.dropManagedIndexes(indexTable);
+            // Only matters if an earlier cleanup failed; if this one fails too, the baseline can't be trusted.
+            indexChangeService.dropRecordedIndexes();
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.WARMING_UP_BASELINE);
             warmUp(queries, params);
@@ -145,7 +155,7 @@ public class IndexExperimentService {
                     .toList();
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.ADDING_INDEX);
-            indexChangeService.addIndex(indexTable, index);
+            indexChangeService.createExperimentIndex(experimentId, indexTable, index);
 
             experimentRepository.updatePhase(experimentId, ExperimentPhase.WARMING_UP_CANDIDATE);
             warmUp(queries, params);
@@ -177,11 +187,26 @@ public class IndexExperimentService {
                 experimentRepository.insertQueryResult(experimentId, result);
             }
 
-            double overallPercentageChange = median(percentageChanges);
-            experimentRepository.completeExperiment(experimentId, overallPercentageChange);
+            overallPercentageChange = median(percentageChanges);
         } catch (RuntimeException e) {
             log.error("Experiment {} failed", experimentId, e);
-            experimentRepository.failExperiment(experimentId);
+        } finally {
+            // Clean up before publishing a final status, so a finished experiment has already removed its index.
+            removeExperimentIndex(experimentId);
+            if (overallPercentageChange != null) {
+                experimentRepository.completeExperiment(experimentId, overallPercentageChange);
+            } else {
+                experimentRepository.failExperiment(experimentId);
+            }
+        }
+    }
+
+    private void removeExperimentIndex(long experimentId) {
+        try {
+            indexChangeService.dropRecordedIndexes();
+        } catch (RuntimeException e) {
+            // Ownership stays recorded, so the next run (or the next startup) retries.
+            log.error("Could not remove the index of experiment {}", experimentId, e);
         }
     }
 

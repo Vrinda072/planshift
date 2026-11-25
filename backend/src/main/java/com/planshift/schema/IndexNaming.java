@@ -1,12 +1,23 @@
 package com.planshift.schema;
 
-/** The one place that decides what an index PLANSHIFT creates (and later drops) is called. */
+/** Names of the indexes PLANSHIFT creates. A name is never taken as proof of ownership; the experiments table is. */
 public final class IndexNaming {
 
     private IndexNaming() {
     }
 
     private static final int MAX_LENGTH = 63;
+    private static final String EXPERIMENT_PREFIX = "planshift_exp_";
+
+    /** Name of the temporary index one experiment creates and later removes. */
+    public static String experimentName(long experimentId) {
+        return EXPERIMENT_PREFIX + experimentId;
+    }
+
+    /** True for an experiment's temporary index, so the schema view doesn't report it as a lasting one. */
+    public static boolean isTemporary(String indexName) {
+        return indexName.startsWith(EXPERIMENT_PREFIX);
+    }
 
     public static String managedName(String table, String column) {
         return managedName(table, java.util.List.of(column));
@@ -24,9 +35,5 @@ public final class IndexNaming {
         // Postgres truncates identifiers at 63 bytes, which could make two different indexes collide.
         String tag = Integer.toHexString(name.hashCode());
         return name.substring(0, MAX_LENGTH - tag.length() - 1) + "_" + tag;
-    }
-
-    public static boolean isManaged(String indexName) {
-        return "idx_orders_customer_id".equals(indexName) || indexName.startsWith("idx_planshift_");
     }
 }

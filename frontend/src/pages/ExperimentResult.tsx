@@ -86,6 +86,25 @@ export function ExperimentResult() {
   if (error) return <div className="error-banner">{error}</div>;
   if (!experiment) return <div className="loading-line">Loading experiment...</div>;
 
+  if (experiment.status === "QUEUED") {
+    return (
+      <div>
+        <PageHeader title={`Experiment #${experiment.experimentId}`}>
+          <MetaRow experiment={experiment} />
+        </PageHeader>
+        <section className="panel">
+          <div className="panel-body">
+            <span className="status queued">Queued</span>
+            <p className="panel-note" style={{ margin: "8px 0 0" }}>
+              Experiments run one at a time, so that none of them is measured while another is changing indexes. This
+              one starts when those ahead of it finish, and this page updates by itself.
+            </p>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   if (experiment.status === "RUNNING") {
     return (
       <div>

@@ -13,11 +13,11 @@ export const PHASE_ORDER: ExperimentPhase[] = [
 ];
 
 export const PHASE_LABEL: Record<ExperimentPhase, string> = {
-  PENDING: "Queued",
-  DROPPING_INDEX: "Dropping the index",
+  PENDING: "Starting",
+  DROPPING_INDEX: "Preparing the baseline",
   WARMING_UP_BASELINE: "Warming up cache (baseline)",
   MEASURING_BASELINE: "Measuring baseline",
-  ADDING_INDEX: "Adding the index",
+  ADDING_INDEX: "Creating the index",
   WARMING_UP_CANDIDATE: "Warming up cache (candidate)",
   MEASURING_CANDIDATE: "Measuring candidate",
   COMPARING_RESULTS: "Comparing & saving results",
@@ -27,16 +27,16 @@ export const PHASE_LABEL: Record<ExperimentPhase, string> = {
 export const PHASE_EXPLANATION: Record<ExperimentPhase, string> = {
   PENDING: "The experiment has been created and is about to start.",
   DROPPING_INDEX:
-    "Removing idx_orders_customer_id if it exists, so the baseline measurement reflects a database with no index on this column.",
+    "Making sure no temporary index from an interrupted run is still there. Indexes that already existed are left in place.",
   WARMING_UP_BASELINE:
     "Running the full workload once, untimed, so Postgres's memory cache is warm before real measurement begins. Without this, whichever phase runs first would look artificially slow.",
   MEASURING_BASELINE:
-    "Running all 10 queries, 5 times each, and capturing a real EXPLAIN ANALYZE execution plan for each — this is the \"before\" state.",
-  ADDING_INDEX: "Running CREATE INDEX on orders.customer_id — this is the database change being tested.",
+    "Timing each query repeatedly, then capturing a real EXPLAIN ANALYZE plan for it. This is the \"before\" state.",
+  ADDING_INDEX: "Running CREATE INDEX on the chosen columns. This is the change being tested.",
   WARMING_UP_CANDIDATE: "Warming the cache again for the candidate configuration, for the same reason as before.",
   MEASURING_CANDIDATE:
-    "Running all 10 queries again, 5 times each, with the index in place — this is the \"after\" state.",
+    "Timing the same queries again with the index in place. This is the \"after\" state.",
   COMPARING_RESULTS:
-    "Computing percentage change per query, classifying each as improved/unchanged/regressed, and diffing the before/after execution plans.",
+    "Computing the change per query, comparing the before and after plans, and removing the temporary index.",
   DONE: "Finished.",
 };

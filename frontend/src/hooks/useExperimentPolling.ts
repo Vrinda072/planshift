@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Experiment } from "../api/types";
+import { isUnfinished } from "../lib/status";
 
 /**
- * Polls a real experiment's status while it's RUNNING. This reflects genuine
+ * Polls a real experiment's status while it's queued or running. This reflects genuine
  * server-side progress (the backend updates current_phase as each real step
  * completes) rather than a simulated/fake progress indicator.
  *
@@ -26,7 +27,7 @@ export function useExperimentPolling(experimentId: number | null, intervalMs = 6
     let latestStatus: Experiment["status"] | null = null;
 
     const scheduleNext = () => {
-      if (cancelled || latestStatus !== "RUNNING") return;
+      if (cancelled || latestStatus === null || !isUnfinished(latestStatus)) return;
       if (document.visibilityState === "visible") {
         timer = setTimeout(poll, intervalMs);
       }
@@ -47,7 +48,7 @@ export function useExperimentPolling(experimentId: number | null, intervalMs = 6
     };
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === "visible" && latestStatus === "RUNNING") {
+      if (document.visibilityState === "visible" && latestStatus !== null && isUnfinished(latestStatus)) {
         if (timer) clearTimeout(timer);
         poll();
       }

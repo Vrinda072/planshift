@@ -1,6 +1,5 @@
 package com.planshift.experiment;
 
-import com.planshift.schema.SchemaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,9 +26,6 @@ class IndexChangeServiceIT {
     private IndexChangeService indexChangeService;
 
     @Autowired
-    private SchemaService schemaService;
-
-    @Autowired
     private JdbcTemplate jdbc;
 
     private void probeTable() {
@@ -54,32 +50,9 @@ class IndexChangeServiceIT {
     }
 
     @Test
-    void managedCompositeIndexDoesNotCountAsAlreadyIndexed() {
-        probeTable();
-        indexChangeService.addIndex("idx_probe", new IndexSpec(List.of("a", "b")));
-        boolean aIndexed = schemaService.listTables().stream()
-                .filter(t -> t.tableName().equals("idx_probe")).findFirst().orElseThrow()
-                .columns().stream().filter(c -> c.columnName().equals("a")).findFirst().orElseThrow().indexed();
-        assertThat(aIndexed).isFalse();
-    }
-
-    @Test
     void rejectsUnknownColumnsBeforeRunningDdl() {
         probeTable();
         assertThatThrownBy(() -> indexChangeService.addIndex("idx_probe", new IndexSpec(List.of("a", "nope"))))
                 .hasMessageContaining("Unknown column");
-    }
-
-    @Test
-    void baselineClearsEveryManagedIndexOnTheTableButKeepsUserOnes() {
-        probeTable();
-        jdbc.execute("CREATE INDEX my_own_idx ON idx_probe (a)");
-        indexChangeService.addIndex("idx_probe", IndexSpec.of("a"));
-        indexChangeService.addIndex("idx_probe", new IndexSpec(List.of("a", "b")));
-        indexChangeService.addIndex("idx_probe", IndexSpec.of("c"));
-
-        indexChangeService.dropManagedIndexes("idx_probe");
-
-        assertThat(definitions()).singleElement().asString().contains("my_own_idx");
     }
 }

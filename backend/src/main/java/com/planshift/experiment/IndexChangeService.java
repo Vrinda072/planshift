@@ -4,8 +4,10 @@ import com.planshift.schema.SchemaService;
 import com.planshift.schema.IndexNaming;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -21,10 +23,12 @@ public class IndexChangeService {
 
     private final JdbcTemplate jdbc;
     private final SchemaService schemaService;
+    private final TransactionTemplate transactions;
 
-    public IndexChangeService(JdbcTemplate jdbc, SchemaService schemaService) {
+    public IndexChangeService(JdbcTemplate jdbc, SchemaService schemaService, TransactionTemplate transactions) {
         this.jdbc = jdbc;
         this.schemaService = schemaService;
+        this.transactions = transactions;
     }
 
     public void addCustomerIdIndex() {
@@ -54,9 +58,8 @@ public class IndexChangeService {
 
     public void addIndex(String table, IndexSpec spec) {
         requireValid(table, spec);
-        String columns = spec.columns().stream().map(this::quoteIdent).collect(Collectors.joining(", "));
         jdbc.execute("CREATE INDEX IF NOT EXISTS " + quoteIdent(nameOf(table, spec))
-                + " ON " + quoteIdent(table) + " (" + columns + ")");
+                + " ON " + quoteIdent(table) + " (" + columnList(spec) + ")");
     }
 
     public void dropIndex(String table, IndexSpec spec) {
@@ -65,27 +68,62 @@ public class IndexChangeService {
     }
 
     /**
-     * Clears the baseline: drops every PLANSHIFT-created index on this table, including ones left over from
-     * earlier experiments, so "before" really means "none of ours". Otherwise a leftover index on any column of
-     * the table could serve the query and hide the effect of the one under test. Indexes the user created
-     * themselves are never touched.
+     * Creates this experiment's own, uniquely named index and records that it owns it, atomically: Postgres DDL is
+     * transactional, so there is no moment where the index exists without the record or the other way round.
+     * No IF NOT EXISTS on purpose -- if the name were somehow taken, this must fail rather than adopt (and later
+     * drop) an index it didn't create.
      */
-    public void dropManagedIndexes(String table) {
-        if (!schemaService.tableExists(table)) {
-            throw new IllegalArgumentException("Unknown table: " + table);
+    public String createExperimentIndex(long experimentId, String table, IndexSpec spec) {
+        requireValid(table, spec);
+        String name = IndexNaming.experimentName(experimentId);
+        transactions.executeWithoutResult(status -> {
+            jdbc.execute("CREATE INDEX " + quoteIdent(name) + " ON " + quoteIdent(table)
+                    + " (" + columnList(spec) + ")");
+            jdbc.update("UPDATE experiments SET index_name = ? WHERE experiment_id = ?", name, experimentId);
+        });
+        return name;
+    }
+
+    /** Drops every index still recorded as owned by an experiment. Nothing is ever dropped on the strength of its name. */
+    public void dropRecordedIndexes() {
+        jdbc.query("SELECT experiment_id, index_name FROM experiments WHERE index_name IS NOT NULL",
+                        (rs, row) -> Map.entry(rs.getLong("experiment_id"), rs.getString("index_name")))
+                .forEach(owned -> transactions.executeWithoutResult(status -> {
+                    jdbc.execute("DROP INDEX IF EXISTS " + quoteIdent(owned.getValue()));
+                    jdbc.update("UPDATE experiments SET index_name = NULL WHERE experiment_id = ?", owned.getKey());
+                }));
+    }
+
+    /**
+     * One-time cleanup for experiments run before ownership was recorded: they left their index behind under a name
+     * derived from the table and columns. Only a name matching a stored experiment, on that same table, is dropped.
+     */
+    public void dropLegacyIndexes() {
+        List<LegacyTarget> targets = jdbc.query(
+                "SELECT experiment_id, target_table, target_column FROM experiments WHERE legacy_index_pending",
+                (rs, row) -> new LegacyTarget(rs.getLong("experiment_id"), rs.getString("target_table"),
+                        rs.getString("target_column")));
+        for (LegacyTarget target : targets) {
+            String table = target.table() != null ? target.table() : "orders";
+            String columns = target.columns() != null ? target.columns() : "customer_id";
+            String name = IndexNaming.managedName(table, List.of(columns.split(",")));
+            transactions.executeWithoutResult(status -> {
+                Integer matches = jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' AND tablename = ? AND indexname = ?",
+                        Integer.class, table, name);
+                if (matches != null && matches > 0) {
+                    jdbc.execute("DROP INDEX " + quoteIdent(name));
+                }
+                jdbc.update("UPDATE experiments SET legacy_index_pending = FALSE WHERE experiment_id = ?", target.id());
+            });
         }
-        List<String> names = jdbc.queryForList(
-                "SELECT ic.relname FROM pg_index i "
-                        + "JOIN pg_class c ON c.oid = i.indrelid "
-                        + "JOIN pg_class ic ON ic.oid = i.indexrelid "
-                        + "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                        + "WHERE n.nspname = 'public' AND c.relname = ?",
-                String.class, table);
-        for (String name : names) {
-            if (IndexNaming.isManaged(name)) {
-                jdbc.execute("DROP INDEX IF EXISTS " + quoteIdent(name));
-            }
-        }
+    }
+
+    private record LegacyTarget(long id, String table, String columns) {
+    }
+
+    private String columnList(IndexSpec spec) {
+        return spec.columns().stream().map(this::quoteIdent).collect(Collectors.joining(", "));
     }
 
     private boolean indexExists(String name) {

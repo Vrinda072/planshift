@@ -34,13 +34,29 @@ public class ExperimentRepository {
             ps.setLong(4, datasetSeed);
             ps.setInt(5, repetitions);
             ps.setDouble(6, thresholdFraction);
-            ps.setString(7, ExperimentStatus.RUNNING.name());
+            ps.setString(7, ExperimentStatus.QUEUED.name());
             ps.setString(8, ExperimentPhase.PENDING.name());
             ps.setString(9, targetTable);
             ps.setString(10, targetColumn);
             return ps;
         }, keyHolder);
         return keyHolder.getKey().longValue();
+    }
+
+    public void markRunning(long experimentId) {
+        jdbc.update("UPDATE experiments SET status = ? WHERE experiment_id = ?",
+                ExperimentStatus.RUNNING.name(), experimentId);
+    }
+
+    public void deleteExperiment(long experimentId) {
+        jdbc.update("DELETE FROM experiments WHERE experiment_id = ?", experimentId);
+    }
+
+    /** Marks everything still queued or running as failed. Only safe when no worker can be running, i.e. at startup. */
+    public int failUnfinished() {
+        return jdbc.update("UPDATE experiments SET status = ?, current_phase = ? WHERE status IN (?, ?)",
+                ExperimentStatus.FAILED.name(), ExperimentPhase.DONE.name(),
+                ExperimentStatus.QUEUED.name(), ExperimentStatus.RUNNING.name());
     }
 
     public void updatePhase(long experimentId, ExperimentPhase phase) {

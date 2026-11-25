@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -35,7 +36,7 @@ class IndexExperimentIT {
     private ExperimentRepository experimentRepository;
 
     @Autowired
-    private IndexChangeService indexChangeService;
+    private JdbcTemplate jdbc;
 
     @Test
     void runsFullExperimentAndPersistsResultsForEveryQuery() {
@@ -48,8 +49,10 @@ class IndexExperimentIT {
         assertThat(experiment.queryResults()).hasSize(10);
         assertThat(experiment.overallPercentageChange()).isNotNull();
 
-        // the experiment leaves the index in place (the last configuration it ran)
-        assertThat(indexChangeService.customerIdIndexExists()).isTrue();
+        // the experiment removes the index it created once it has measured it
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM pg_indexes WHERE tablename = 'orders' AND indexname LIKE 'planshift_exp_%'",
+                Integer.class)).isZero();
     }
 
     @Test
