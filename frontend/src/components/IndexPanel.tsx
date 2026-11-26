@@ -25,6 +25,7 @@ export function IndexPanel({ experiment, showCost = false }: { experiment: Exper
   const kept = current.keptIndexName;
   const improved = experiment.queryResults.some((r) => outcome(r) === "faster");
   const unsure = !improved && experiment.queryResults.some((r) => outcome(r) === "unsure");
+  const unchecked = !improved && experiment.queryResults.some((r) => outcome(r) === "unchecked");
 
   const change = async (action: (id: number) => Promise<Experiment>) => {
     setBusy(true);
@@ -43,7 +44,9 @@ export function IndexPanel({ experiment, showCost = false }: { experiment: Exper
       <h2>{improved ? "Keep this index" : "The tested index"}</h2>
       {!improved && (
         <p>
-          {unsure
+          {unchecked
+            ? "This older result wasn't timing-checked, so it can't say whether the index helps."
+            : unsure
             ? "This run had too few runs to tell whether the index helps."
             : "This run didn't show an improvement, so there may be no reason to create it."}
         </p>

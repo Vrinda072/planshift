@@ -28,7 +28,7 @@ export function ResultBlocks({ experiment }: { experiment: Experiment }) {
   const faster = results.filter((r) => outcome(r) === "faster").length;
   const slower = results.filter((r) => outcome(r) === "slower").length;
   const unsure = results.filter((r) => outcome(r) === "unsure").length;
-  const checked = results.every((r) => r.timing) ? " and passed the timing check" : "";
+  const unchecked = results.filter((r) => outcome(r) === "unchecked").length;
   const sides = direction === "control" ? ["first half", "second half"] : ["without the index", "with the index"];
   const clock = results[0].timing ? `, ${clockName(results[0].timing)}` : "";
   const caption = verdictCaption(experiment);
@@ -53,14 +53,15 @@ export function ResultBlocks({ experiment }: { experiment: Experiment }) {
           <div className="block block-count">
             <h2>Faster</h2>
             <div className="block-num">{faster}<small>of {results.length}</small></div>
-            <p>queries got faster past the threshold{checked}</p>
+            <p>queries got faster past the threshold and passed the timing check</p>
           </div>
           <div className="block block-count">
             <h2>Slower</h2>
             <div className="block-num">{slower}<small>of {results.length}</small></div>
             <p>
-              queries got slower past the threshold{checked}
+              queries got slower past the threshold and passed the timing check
               {unsure > 0 && `. ${unsure} had too few runs to tell`}
+              {unchecked > 0 && `. ${unchecked} weren't timing-checked`}
             </p>
           </div>
         </>

@@ -206,7 +206,7 @@ export function ExperimentResult() {
 
       <QueryLine experiment={experiment} />
       <ResultBlocks experiment={experiment} />
-      {!isControl(experiment) && (
+      {!isControl(experiment) && results.some((r) => r.timing) && (
         <p className="trust-line">
           Even a passed timing check can come from the machine speeding up or slowing down. An A/A check shows how often
           that happens here.

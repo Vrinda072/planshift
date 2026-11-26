@@ -33,7 +33,7 @@ export function ResultCards({ experiment, onShowPlan, planOpen }: {
         ) : story.kind === "same" ? (
           <p>
             Postgres used the same plan both times
-            {!control && direction !== "same" ? ", so the plan doesn't explain the difference." : "."}
+            {!control && (direction === "faster" || direction === "slower") ? ", so the plan doesn't explain the difference." : "."}
           </p>
         ) : story.kind === "other" ? (
           <p>Both plans start with the same kind of scan, but other steps or the index used changed.</p>

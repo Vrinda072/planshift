@@ -38,6 +38,14 @@ describe("outcome", () => {
     expect(outcome(result("UNCHANGED", [5], [5], "TOO_FEW_RUNS"))).toBe("unsure");
   });
 
+  it("claims nothing for results that never saved their runs", () => {
+    const old: ExperimentQueryResult = { ...result("REGRESSED"), timing: null };
+    expect(outcome(old)).toBe("unchecked");
+    expect(changeClass(old)).toBe("change-neutral");
+    expect(headline(run([old]))).toBe("This older result wasn't timing-checked");
+    expect(verdictBlock(run([old]))).toEqual({ tone: "unchecked", word: "Not checked" });
+  });
+
   it("keeps the slower colour for results that count as slower", () => {
     const bigger: ExperimentQueryResult = { ...result("UNCHANGED"), percentageChange: 40 };
     expect(changeClass(bigger)).toBe("change-neutral");

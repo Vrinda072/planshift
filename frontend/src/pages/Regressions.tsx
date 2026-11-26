@@ -20,7 +20,7 @@ export function Regressions() {
     <div>
       <PageHeader
         title="Regressions"
-        sub="Every query result that got slower past the threshold, across all experiments. Results with too few runs to check are left out."
+        sub="Every query result that got slower past the threshold, across all experiments. Results that couldn't be checked (too few runs, or no saved run times) are left out."
       />
       {error && <div className="error-banner">{error}</div>}
 
@@ -33,7 +33,7 @@ export function Regressions() {
         {regressions && regressions.length === 0 && (
           <div className="empty-state">
             <strong>Nothing regressed</strong>
-            No query has gotten slower than its threshold in any experiment so far.
+            No checked result so far has been slower past its threshold.
           </div>
         )}
         {regressions && regressions.length > 0 && (

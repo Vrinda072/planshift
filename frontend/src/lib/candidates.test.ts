@@ -3,7 +3,7 @@ import type { Experiment } from "../api/types";
 import { SAMPLE_QUERY, bestCandidate, candidateFinding, candidateIndexes, leadingCandidates } from "./candidates";
 
 function run(id: number, status: string, percentageChange: number) {
-  return { experimentId: id, queryResults: [{ status, percentageChange }] } as unknown as Experiment;
+  return { experimentId: id, queryResults: [{ status, percentageChange, timing: { evidence: "CLEAR" } }] } as unknown as Experiment;
 }
 
 describe("candidateIndexes", () => {

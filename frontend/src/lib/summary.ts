@@ -10,16 +10,17 @@ export type Tone = Outcome | "control";
 
 function counts(results: ExperimentQueryResult[]) {
   const count = (o: Outcome) => results.filter((r) => outcome(r) === o).length;
-  return { faster: count("faster"), slower: count("slower"), unsure: count("unsure") };
+  return { faster: count("faster"), slower: count("slower"), unsure: count("unsure"), unchecked: count("unchecked") };
 }
 
 /** The direction a finished run is allowed to claim, from the per-query outcomes, never the raw percentage. */
 export function tone(experiment: Experiment): Tone {
   if (isControl(experiment)) return "control";
-  const { faster, slower, unsure } = counts(experiment.queryResults);
+  const { faster, slower, unsure, unchecked } = counts(experiment.queryResults);
   if (faster > 0 && slower === 0) return "faster";
   if (slower > 0 && faster === 0) return "slower";
-  return faster === 0 && unsure > 0 ? "unsure" : "same";
+  if (faster > 0) return "same";
+  return unchecked > 0 ? "unchecked" : unsure > 0 ? "unsure" : "same";
 }
 
 function parsePlan(json: string): PlanNode | null {
@@ -47,7 +48,7 @@ export function creditsIndex(result: ExperimentQueryResult): boolean {
 export function headline(experiment: Experiment): string {
   if (isControl(experiment)) return "A/A check: nothing was changed";
   const results = experiment.queryResults;
-  const { faster, slower, unsure } = counts(results);
+  const { faster, slower, unsure, unchecked } = counts(results);
   if (results.length === 1) {
     const direction = faster ? "faster" : slower ? "slower" : null;
     if (direction) {
@@ -55,6 +56,7 @@ export function headline(experiment: Experiment): string {
         ? `Your index made this query ${direction}`
         : `This query ran ${direction} with the index`;
     }
+    if (unchecked) return "This older result wasn't timing-checked";
     return unsure ? "Too few runs to tell" : "No real difference with this index";
   }
   if (faster && slower) return `${faster} of ${results.length} queries ran faster with the index, ${slower} slower`;
@@ -65,6 +67,7 @@ export function headline(experiment: Experiment): string {
       ? `Your index made ${moved.length} of ${results.length} queries ${direction}`
       : `${moved.length} of ${results.length} queries ran ${direction} with the index`;
   }
+  if (unchecked) return `${unchecked} of ${results.length} queries weren't timing-checked`;
   return unsure
     ? `Too few runs to tell for ${unsure} of ${results.length} queries`
     : `No real difference across ${results.length} queries`;
@@ -83,6 +86,7 @@ export function verdictBlock(experiment: Experiment): { tone: Tone; word: string
       slower: "↑ Slower",
       same: "No real difference",
       unsure: "Too few runs to tell",
+      unchecked: "Not checked",
     }[direction];
     return { tone: direction, word };
   }
@@ -98,6 +102,12 @@ export function verdictCaption(experiment: Experiment): { lead: string; rest: st
 
   if (isControl(experiment)) return { lead: "Nothing was changed.", rest: verdict(experiment) };
   if (experiment.queryResults.length > 1) {
+    if (experiment.queryResults.every((r) => outcome(r) === "unchecked")) {
+      return {
+        lead: `${overall < 0 ? "Less" : "More"} time for the median query.`,
+        rest: "This older run didn't save individual timings, so no query's change is checked.",
+      };
+    }
     return {
       lead: `${overall < 0 ? "Less" : "More"} time for the median query.`,
       rest: withinThreshold
@@ -116,6 +126,11 @@ export function verdictCaption(experiment: Experiment): { lead: string; rest: st
           : "It doesn't count, because the timing check couldn't tell the runs apart.",
       };
     }
+    case "unchecked":
+      return {
+        lead: `${overall < 0 ? "Less" : "More"} time in these runs.`,
+        rest: "This older result didn't save its individual runs, so the change can't be checked against variation.",
+      };
     case "unsure":
       return {
         lead: `${overall < 0 ? "Less" : "More"} time in these runs.`,

@@ -173,7 +173,7 @@ h1, h2, h3 { text-wrap: balance; }
 .block-verdict .block-num { font-size: clamp(56px, 6.8vw, 96px); }
 /* "slower" turns the block dark, so it can't be mistaken for a win at a glance; the word says it too */
 .block-verdict.slower { background: var(--plum); color: var(--white); }
-.block-verdict.same, .block-verdict.control, .block-verdict.unsure { background: var(--blush); box-shadow: inset 0 0 0 2px var(--plum); }
+.block-verdict.same, .block-verdict.control, .block-verdict.unsure, .block-verdict.unchecked { background: var(--blush); box-shadow: inset 0 0 0 2px var(--plum); }
 
 .trust-line { margin: -6px 0 18px; font-size: 13.5px; color: var(--soft); }
 
@@ -275,7 +275,7 @@ input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; }
 .badge-faster { background: var(--coral); }
 .badge-slower { background: var(--plum); color: var(--white); }
 .badge-same { box-shadow: inset 0 0 0 1.5px var(--line-strong); }
-.badge-unsure { box-shadow: inset 0 0 0 1.5px var(--plum); border: 0; background: var(--white); }
+.badge-unsure, .badge-unchecked { box-shadow: inset 0 0 0 1.5px var(--plum); border: 0; background: var(--white); }
 
 .status { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .status::before { content: ""; flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--plum); }

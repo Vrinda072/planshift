@@ -92,6 +92,9 @@ export function candidateFinding(experiments: Experiment[]): string {
   const best = bestCandidate(experiments);
   if (!best) {
     const unsure = experiments.filter((e) => e.queryResults[0] && outcome(e.queryResults[0]) === "unsure").length;
+    if (experiments.some((e) => e.queryResults[0] && outcome(e.queryResults[0]) === "unchecked")) {
+      return "Some of these older results weren't timing-checked, so this can't say whether those indexes help. Run them again.";
+    }
     if (unsure === 0) {
       return "None of these indexes made a difference that counts, so there's no reason here to add one.";
     }

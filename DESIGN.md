@@ -202,9 +202,9 @@ A warm sunset on white: one dark ink, three saturated warm fills, and pale tints
 
 **The Verdict Colour Rule.** Colour follows the verdict, never the sign of a number. Faster is coral (in tables, plum figures beside a coral badge). Slower is a plum fill with white text; rust text is only for results that count as slower, and for errors. A change that doesn't count is soft plum in result and candidate tables, whichever way its arrow points.
 
-**The Say It Too Rule.** Every verdict is also a word: "Faster", "Slower", "No real change" or "No real difference", "Too few runs to tell". Change figures carry an arrow.
+**The Say It Too Rule.** Every verdict is also a word: "Faster", "Slower", "No real change" or "No real difference", "Too few runs to tell", "Not checked". Change figures carry an arrow.
 
-**The No Claim Rule.** With too few runs to check against variation, no direction is claimed, even if the server marked one. The result reads "Too few runs to tell", takes the neutral treatment, and stays out of regression lists and counts.
+**The No Claim Rule.** With too few runs to check against variation, no direction is claimed, even if the server marked one. The result reads "Too few runs to tell", takes the neutral treatment, and stays out of regression lists and counts. Results recorded before individual runs were saved follow the same rule and read "Not checked".
 
 **The Median Takes No Side Rule.** A median across several queries is never timing-checked, so it never takes a verdict colour. Its block is blush with a plum ring, and median figures in lists and comparisons stay plum.
 

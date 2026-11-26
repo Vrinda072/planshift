@@ -32,7 +32,11 @@ function Row({ experiment, isBest }: { experiment: Experiment; isBest: boolean }
               {formatChangeText(result.percentageChange)}
             </span>
             <div className="cell-range">
-              {outcome(result) === "unsure" ? OUTCOME_LABEL.unsure : evidenceNote(result, experiment.thresholdFraction)}
+              {outcome(result) === "unchecked"
+                ? OUTCOME_LABEL.unchecked
+                : outcome(result) === "unsure"
+                  ? OUTCOME_LABEL.unsure
+                  : evidenceNote(result, experiment.thresholdFraction)}
             </div>
           </td>
           <td className="num sub" data-label="Size">

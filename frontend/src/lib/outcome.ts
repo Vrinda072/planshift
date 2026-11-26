@@ -1,14 +1,16 @@
 import type { ExperimentQueryResult } from "../api/types";
 
 /** What one query's result is allowed to claim. */
-export type Outcome = "faster" | "slower" | "same" | "unsure";
+export type Outcome = "faster" | "slower" | "same" | "unsure" | "unchecked";
 
 /**
  * With too few runs to check against variation, the server decides from the threshold alone. That is not enough to
- * claim a direction, or to claim there was no difference, so such a result reads as unsure everywhere.
+ * claim a direction, or to claim there was no difference, so such a result reads as unsure everywhere. Results
+ * recorded before individual runs were saved can't be checked at all, and claim nothing either.
  */
 export function outcome(result: Pick<ExperimentQueryResult, "status" | "timing">): Outcome {
-  if (result.timing?.evidence === "TOO_FEW_RUNS") return "unsure";
+  if (!result.timing) return "unchecked";
+  if (result.timing.evidence === "TOO_FEW_RUNS") return "unsure";
   if (result.status === "UNCHANGED") return "same";
   return result.status === "IMPROVED" ? "faster" : "slower";
 }
@@ -18,6 +20,7 @@ export const OUTCOME_LABEL: Record<Outcome, string> = {
   slower: "Slower",
   same: "No real change",
   unsure: "Too few runs to tell",
+  unchecked: "Not checked",
 };
 
 /** Colour follows the verdict, never the sign of the number: the "slower" colour is only for results that count. */

@@ -387,12 +387,12 @@
       },
       {
         "name": "The Say It Too Rule",
-        "body": "Every verdict is also a word: \"Faster\", \"Slower\", \"No real change\" or \"No real difference\", \"Too few runs to tell\". Change figures carry an arrow.",
+        "body": "Every verdict is also a word: \"Faster\", \"Slower\", \"No real change\" or \"No real difference\", \"Too few runs to tell\", \"Not checked\". Change figures carry an arrow.",
         "section": "colors"
       },
       {
         "name": "The No Claim Rule",
-        "body": "With too few runs to check against variation, no direction is claimed, even if the server marked one. The result reads \"Too few runs to tell\", takes the neutral treatment, and stays out of regression lists and counts.",
+        "body": "With too few runs to check against variation, no direction is claimed, even if the server marked one. The result reads \"Too few runs to tell\", takes the neutral treatment, and stays out of regression lists and counts. Results recorded before individual runs were saved follow the same rule and read \"Not checked\".",
         "section": "colors"
       },
       {

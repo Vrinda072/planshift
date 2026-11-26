@@ -169,7 +169,7 @@ export function Overview() {
           </div>
           {regressions === null && <div className="empty-state">Loading...</div>}
           {regressions && regressions.length === 0 && (
-            <div className="empty-state" style={{ padding: "32px 18px" }}>No query has regressed.</div>
+            <div className="empty-state" style={{ padding: "32px 18px" }}>No checked result is slower.</div>
           )}
           {regressions && regressions.length > 0 && (
             <ul className="list">
