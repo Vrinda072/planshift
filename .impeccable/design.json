@@ -1,0 +1,434 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-26T00:00:00Z",
+  "title": "Design System: planshift",
+  "extensions": {
+    "colorMeta": {
+      "plum": {
+        "role": "primary",
+        "displayName": "Plum",
+        "canonical": "#3a1230",
+        "tonalRamp": [
+          "oklch(15% 0.034 338.5)",
+          "oklch(26% 0.053 338.5)",
+          "oklch(38% 0.068 338.5)",
+          "oklch(50% 0.076 338.5)",
+          "oklch(62% 0.076 338.5)",
+          "oklch(74% 0.065 338.5)",
+          "oklch(85% 0.046 338.5)",
+          "oklch(95% 0.019 338.5)"
+        ]
+      },
+      "coral": {
+        "role": "primary",
+        "displayName": "Coral",
+        "canonical": "#ff7a59",
+        "tonalRamp": [
+          "oklch(15% 0.076 35.1)",
+          "oklch(26% 0.119 35.1)",
+          "oklch(38% 0.153 35.1)",
+          "oklch(50% 0.170 35.1)",
+          "oklch(62% 0.170 35.1)",
+          "oklch(74% 0.144 35.1)",
+          "oklch(85% 0.102 35.1)",
+          "oklch(95% 0.042 35.1)"
+        ]
+      },
+      "coral-hover": {
+        "role": "primary",
+        "displayName": "Coral Hover",
+        "canonical": "#ff8f73",
+        "tonalRamp": [
+          "oklch(15% 0.064 35.0)",
+          "oklch(26% 0.099 35.0)",
+          "oklch(38% 0.128 35.0)",
+          "oklch(50% 0.142 35.0)",
+          "oklch(62% 0.142 35.0)",
+          "oklch(74% 0.121 35.0)",
+          "oklch(85% 0.085 35.0)",
+          "oklch(95% 0.035 35.0)"
+        ]
+      },
+      "amber": {
+        "role": "secondary",
+        "displayName": "Amber",
+        "canonical": "#ffbe3d",
+        "tonalRamp": [
+          "oklch(15% 0.070 80.2)",
+          "oklch(26% 0.109 80.2)",
+          "oklch(38% 0.140 80.2)",
+          "oklch(50% 0.155 80.2)",
+          "oklch(62% 0.155 80.2)",
+          "oklch(74% 0.132 80.2)",
+          "oklch(85% 0.093 80.2)",
+          "oklch(95% 0.039 80.2)"
+        ]
+      },
+      "amber-soft": {
+        "role": "neutral",
+        "displayName": "Soft Amber",
+        "canonical": "#ffe9b8",
+        "tonalRamp": [
+          "oklch(15% 0.030 86.6)",
+          "oklch(26% 0.047 86.6)",
+          "oklch(38% 0.061 86.6)",
+          "oklch(50% 0.067 86.6)",
+          "oklch(62% 0.067 86.6)",
+          "oklch(74% 0.057 86.6)",
+          "oklch(85% 0.040 86.6)",
+          "oklch(95% 0.017 86.6)"
+        ]
+      },
+      "peach": {
+        "role": "secondary",
+        "displayName": "Peach",
+        "canonical": "#ffdcc8",
+        "tonalRamp": [
+          "oklch(15% 0.021 51.6)",
+          "oklch(26% 0.033 51.6)",
+          "oklch(38% 0.043 51.6)",
+          "oklch(50% 0.047 51.6)",
+          "oklch(62% 0.047 51.6)",
+          "oklch(74% 0.040 51.6)",
+          "oklch(85% 0.028 51.6)",
+          "oklch(95% 0.012 51.6)"
+        ]
+      },
+      "blush": {
+        "role": "neutral",
+        "displayName": "Blush",
+        "canonical": "#fff1ea",
+        "tonalRamp": [
+          "oklch(15% 0.008 48.5)",
+          "oklch(26% 0.012 48.5)",
+          "oklch(38% 0.016 48.5)",
+          "oklch(50% 0.018 48.5)",
+          "oklch(62% 0.018 48.5)",
+          "oklch(74% 0.015 48.5)",
+          "oklch(85% 0.011 48.5)",
+          "oklch(95% 0.004 48.5)"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(15% 0.000 89.9)",
+          "oklch(26% 0.000 89.9)",
+          "oklch(38% 0.000 89.9)",
+          "oklch(50% 0.000 89.9)",
+          "oklch(62% 0.000 89.9)",
+          "oklch(74% 0.000 89.9)",
+          "oklch(85% 0.000 89.9)",
+          "oklch(95% 0.000 89.9)"
+        ]
+      },
+      "soft": {
+        "role": "neutral",
+        "displayName": "Soft Plum",
+        "canonical": "#6e4a63",
+        "tonalRamp": [
+          "oklch(15% 0.027 338.5)",
+          "oklch(26% 0.043 338.5)",
+          "oklch(38% 0.055 338.5)",
+          "oklch(50% 0.061 338.5)",
+          "oklch(62% 0.061 338.5)",
+          "oklch(74% 0.052 338.5)",
+          "oklch(85% 0.037 338.5)",
+          "oklch(95% 0.015 338.5)"
+        ]
+      },
+      "rust": {
+        "role": "neutral",
+        "displayName": "Rust",
+        "canonical": "#a8351b",
+        "tonalRamp": [
+          "oklch(15% 0.070 34.0)",
+          "oklch(26% 0.109 34.0)",
+          "oklch(38% 0.140 34.0)",
+          "oklch(50% 0.155 34.0)",
+          "oklch(62% 0.155 34.0)",
+          "oklch(74% 0.132 34.0)",
+          "oklch(85% 0.093 34.0)",
+          "oklch(95% 0.039 34.0)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Pale Line",
+        "canonical": "#f4ded3",
+        "tonalRamp": [
+          "oklch(15% 0.013 48.4)",
+          "oklch(26% 0.020 48.4)",
+          "oklch(38% 0.026 48.4)",
+          "oklch(50% 0.029 48.4)",
+          "oklch(62% 0.029 48.4)",
+          "oklch(74% 0.024 48.4)",
+          "oklch(85% 0.017 48.4)",
+          "oklch(95% 0.007 48.4)"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Strong Line",
+        "canonical": "#8d6a80",
+        "tonalRamp": [
+          "oklch(15% 0.024 340.9)",
+          "oklch(26% 0.038 340.9)",
+          "oklch(38% 0.049 340.9)",
+          "oklch(50% 0.054 340.9)",
+          "oklch(62% 0.054 340.9)",
+          "oklch(74% 0.046 340.9)",
+          "oklch(85% 0.033 340.9)",
+          "oklch(95% 0.014 340.9)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The change in the verdict block."
+      },
+      "block-figure": {
+        "displayName": "Block Figure",
+        "purpose": "Before and after times and workload counts."
+      },
+      "card-figure": {
+        "displayName": "Card Figure",
+        "purpose": "The one figure in a card."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page title; on a result, the finding."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Block and card headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels and table headers."
+      },
+      "sql": {
+        "displayName": "SQL",
+        "purpose": "SQL only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "pop",
+        "value": "0 2px 6px rgba(58, 18, 48, 0.08), 0 18px 40px -12px rgba(58, 18, 48, 0.28)",
+        "purpose": "Search palette and tooltips only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Shared easing."
+      },
+      {
+        "name": "settle",
+        "value": "520ms, 14px rise, 80ms stagger",
+        "purpose": "Result blocks arrive in reading order, visible throughout."
+      },
+      {
+        "name": "count",
+        "value": "650ms ease-out cubic",
+        "purpose": "The change figure counts when its value updates."
+      },
+      {
+        "name": "disclosure",
+        "value": "420ms grid-template-rows",
+        "purpose": "Open runs and plans."
+      },
+      {
+        "name": "press",
+        "value": "scale(0.97), 160ms",
+        "purpose": "Button press."
+      },
+      {
+        "name": "pulse",
+        "value": "1.6s ease-in-out infinite",
+        "purpose": "Running state; loading bars use 1.4s."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "durations 0.001ms; no count",
+        "purpose": "prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "nav-wrap",
+        "value": "1180px"
+      },
+      {
+        "name": "stack-columns",
+        "value": "1040px"
+      },
+      {
+        "name": "phone",
+        "value": "680px"
+      },
+      {
+        "name": "small-phone",
+        "value": "430px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action on a screen.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">New experiment</button>",
+      "css": ".ds-btn{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;min-height:42px;padding:0 20px;border:2px solid #3a1230;border-radius:999px;background:#fff;color:#3a1230;font-size:14.5px;font-weight:700;cursor:pointer;transition:background 120ms ease,transform 160ms cubic-bezier(0.16,1,0.3,1)}.ds-btn:active{transform:scale(.97)}.ds-btn:focus-visible{outline:3px solid #3a1230;outline-offset:2px}.ds-btn-primary{background:#ff7a59;border-color:#ff7a59}.ds-btn-primary:hover{background:#ff8f73;border-color:#ff8f73}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Every other action.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Copy link</button>",
+      "css": ".ds-btn{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;min-height:42px;padding:0 20px;border:2px solid #3a1230;border-radius:999px;background:#fff;color:#3a1230;font-size:14.5px;font-weight:700;cursor:pointer;transition:background 120ms ease,transform 160ms cubic-bezier(0.16,1,0.3,1)}.ds-btn:active{transform:scale(.97)}.ds-btn:focus-visible{outline:3px solid #3a1230;outline-offset:2px}.ds-btn-secondary:hover{background:#ffdcc8}"
+    },
+    {
+      "name": "Navigation Pill",
+      "kind": "nav",
+      "refersTo": "nav-link-active",
+      "description": "Top navigation links; the current page is plum.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-link\" href=\"#\">Overview</a><a class=\"ds-link ds-on\" href=\"#\">Experiments</a></nav>",
+      "css": ".ds-nav{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:flex;gap:4px}.ds-link{padding:8px 15px;border-radius:999px;color:#3a1230;font-size:15px;font-weight:600;text-decoration:none}.ds-link:hover{background:#fff1ea}.ds-link.ds-on{background:#3a1230;color:#fff}.ds-link:focus-visible{outline:3px solid #3a1230;outline-offset:2px}"
+    },
+    {
+      "name": "Before Block",
+      "kind": "card",
+      "refersTo": "block-before",
+      "description": "The time without the index. The After block is the same in amber.",
+      "html": "<div class=\"ds-before\"><h2>Before</h2><div>6.569 ms</div><p>Median of 5 runs without the index, timed by the app</p></div>",
+      "css": ".ds-before{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;justify-content:space-between;gap:18px;padding:26px 32px;border-radius:28px;color:#3a1230;background:#ffdcc8}.ds-before h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em}.ds-before div{font-size:64px;line-height:1;font-weight:800;letter-spacing:-.035em}.ds-before p{margin:0;font-size:15px;line-height:1.5}"
+    },
+    {
+      "name": "Faster Verdict Block",
+      "kind": "custom",
+      "refersTo": "block-verdict-faster",
+      "description": "A one-query result that counts as faster.",
+      "html": "<div class=\"ds-faster\"><h2>↓ Faster</h2><div>98.0%</div><p><b>Less time per run.</b> Every run with the index beat every run without it.</p></div>",
+      "css": ".ds-faster{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;justify-content:space-between;gap:18px;padding:26px 32px;border-radius:28px;color:#3a1230;background:#ff7a59}.ds-faster h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em}.ds-faster div{font-size:64px;line-height:1;font-weight:800;letter-spacing:-.035em}.ds-faster p{margin:0;font-size:15px;line-height:1.5}"
+    },
+    {
+      "name": "Slower Verdict Block",
+      "kind": "custom",
+      "refersTo": "block-verdict-slower",
+      "description": "A one-query result that counts as slower.",
+      "html": "<div class=\"ds-slower\"><h2>↑ Slower</h2><div>29.6%</div><p><b>More time per run.</b> Passed the timing check (p &lt; 0.05); some runs overlap.</p></div>",
+      "css": ".ds-slower{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;justify-content:space-between;gap:18px;padding:26px 32px;border-radius:28px;color:#3a1230;background:#3a1230}.ds-slower h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em}.ds-slower div{font-size:64px;line-height:1;font-weight:800;letter-spacing:-.035em}.ds-slower p{margin:0;font-size:15px;line-height:1.5}.ds-slower{color:#fff}"
+    },
+    {
+      "name": "Neutral Verdict Block",
+      "kind": "custom",
+      "refersTo": "block-verdict-neutral",
+      "description": "No real difference, too few runs, A/A check, or a workload median.",
+      "html": "<div class=\"ds-neutral\"><h2>Too few runs to tell</h2><div>97.9%</div><p><b>Less time in these runs.</b> With this few, the change can't be checked against variation.</p></div>",
+      "css": ".ds-neutral{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;justify-content:space-between;gap:18px;padding:26px 32px;border-radius:28px;color:#3a1230;background:#fff1ea;box-shadow:inset 0 0 0 2px #3a1230}.ds-neutral h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em}.ds-neutral div{font-size:64px;line-height:1;font-weight:800;letter-spacing:-.035em}.ds-neutral p{margin:0;font-size:15px;line-height:1.5}"
+    },
+    {
+      "name": "Verdict Badges",
+      "kind": "chip",
+      "refersTo": "badge-faster",
+      "description": "Per-query verdicts in tables, always worded.",
+      "html": "<span class=\"ds-badge ds-f\">Faster</span> <span class=\"ds-badge ds-s\">Slower</span> <span class=\"ds-badge ds-n\">No real change</span> <span class=\"ds-badge ds-u\">Too few runs to tell</span>",
+      "css": ".ds-badge{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:inline-flex;padding:2px 12px;border-radius:999px;color:#3a1230;font-size:13px;font-weight:700}.ds-f{background:#ff7a59}.ds-s{background:#3a1230;color:#fff}.ds-n{background:#fff1ea;box-shadow:inset 0 0 0 1.5px #8d6a80}.ds-u{background:#fff;box-shadow:inset 0 0 0 1.5px #3a1230}"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Form fields, labelled above.",
+      "html": "<label class=\"ds-field\">Value<input class=\"ds-input\" value=\"500\"></label>",
+      "css": ".ds-field{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:6px;color:#6e4a63;font-size:13px;font-weight:600}.ds-input{min-height:40px;padding:0 14px;border:1.5px solid #8d6a80;border-radius:12px;background:#fff;color:#3a1230;font:500 14.5px 'Hanken Grotesk',system-ui,sans-serif}.ds-input:hover{border-color:#3a1230}.ds-input:focus-visible{outline:3px solid #3a1230;outline-offset:1px}"
+    },
+    {
+      "name": "Copyable SQL",
+      "kind": "custom",
+      "refersTo": "sql-copyable",
+      "description": "A statement to keep, with its copy button.",
+      "html": "<div><pre class=\"ds-sql\">CREATE INDEX CONCURRENTLY ON \"orders\" (\"customer_id\");</pre><button class=\"ds-copy\">Copy SQL</button></div>",
+      "css": ".ds-sql{margin:0;padding:14px 18px;border-radius:12px;background:#3a1230;color:#fff;font:13px/1.65 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere}.ds-copy{font-family:'Hanken Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums;min-height:36px;margin-top:10px;padding:0 18px;border:0;border-radius:999px;background:#ff7a59;color:#3a1230;font-size:13.5px;font-weight:700;cursor:pointer}.ds-copy:hover{background:#ff8f73}.ds-copy:focus-visible{outline:3px solid #3a1230;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Colour Blocks",
+    "overview": "The answer arrives as three large flat blocks that can be read in seconds: before, after, and the change. The palette is a warm sunset on a white ground with plum as the ink. Corners are large, controls are pill-shaped, and one typeface carries everything that isn't SQL. Nothing decorative stands between a developer and the numbers.\n\nIt is fun through colour and scale, and calm through restraint: one theme (light) on every screen, no gradients, no charts, flat fills. Colour has jobs. It says which side of the experiment a number belongs to, and which verdict the result is allowed to claim. A word always says the same thing.",
+    "keyCharacteristics": [
+      "Big tabular numbers in flat colour blocks; no charts or diagrams on results.",
+      "Peach is before, amber is after, coral is the primary action and a faster verdict, plum fill is slower.",
+      "Colour follows the verdict, and every verdict is also written out.",
+      "Large radii and pill controls; depth only on things that float.",
+      "Hanken Grotesk throughout; monospace only for SQL."
+    ],
+    "rules": [
+      {
+        "name": "The Before And After Rule",
+        "body": "Peach means before and amber means after. No other colour takes either role, and neither one fills a data block that isn't that side. Counts across a workload are neither, so their blocks are blush.",
+        "section": "colors"
+      },
+      {
+        "name": "The Verdict Colour Rule",
+        "body": "Colour follows the verdict, never the sign of a number. Faster is coral (in tables, plum figures beside a coral badge). Slower is a plum fill with white text; rust text is only for results that count as slower, and for errors. A change that doesn't count is soft plum in result and candidate tables, whichever way its arrow points.",
+        "section": "colors"
+      },
+      {
+        "name": "The Say It Too Rule",
+        "body": "Every verdict is also a word: \"Faster\", \"Slower\", \"No real change\" or \"No real difference\", \"Too few runs to tell\". Change figures carry an arrow.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Claim Rule",
+        "body": "With too few runs to check against variation, no direction is claimed, even if the server marked one. The result reads \"Too few runs to tell\", takes the neutral treatment, and stays out of regression lists and counts.",
+        "section": "colors"
+      },
+      {
+        "name": "The Median Takes No Side Rule",
+        "body": "A median across several queries is never timing-checked, so it never takes a verdict colour. Its block is blush with a plum ring, and median figures in lists and comparisons stay plum.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Typeface Rule",
+        "body": "Identifiers, table and column names, timings and plan node names stay in Hanken Grotesk, set apart by weight 600. Monospace means SQL and nothing else.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Fill Rule",
+        "body": "Blocks, cards, panels and buttons cast no shadow and take no gradient, at rest or on hover.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep peach for before and amber for after wherever the two sides of a result are shown as colour fills.",
+      "Do derive colour from the verdict and print the verdict as a word beside it.",
+      "Do give \"no real difference\", too few runs, A/A checks and workload medians the neutral treatment.",
+      "Do show how far to trust a result next to the result.",
+      "Do use plum text on coral, amber and peach, and white text on plum.",
+      "Do stack tables on phones with each value labelled, so no verdict is off screen.",
+      "Do meet WCAG 2.1 AA, with a visible plum focus outline."
+    ],
+    "donts": [
+      "Don't put charts, sparklines or timing diagrams on results; show the numbers.",
+      "Don't colour a figure because it went up or down.",
+      "Don't claim a direction from too few runs.",
+      "Don't use rust text for anything but results that count as slower, and errors.",
+      "Don't set anything but SQL in monospace.",
+      "Don't put soft plum text on coral or amber; it falls below 4.5:1.",
+      "Don't add gradients, or shadows to surfaces that don't float.",
+      "Don't break the answer into a dashboard of small stat cards."
+    ]
+  }
+}
