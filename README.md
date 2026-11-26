@@ -1,7 +1,5 @@
 # PLANSHIFT
 
-[![CI](https://github.com/Vrinda072/planshift/actions/workflows/ci.yml/badge.svg)](https://github.com/Vrinda072/planshift/actions/workflows/ci.yml)
-
 Does adding that index actually help? PLANSHIFT measures it.
 
 ![Demo: run the sample experiment, compare four candidate indexes, then open one that saved the most and see its result, CREATE INDEX statement, runs and query plans](docs/demo.gif)
