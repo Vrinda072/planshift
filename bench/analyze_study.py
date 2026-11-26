@@ -224,6 +224,13 @@ def main():
         ("Learned ranker, held-out query family", ranker_scores_for(family, truth, known)),
     ]
 
+    # The planner-based estimate PlanShift gained after the study, collected by planner_estimates.py.
+    planner_path = os.path.splitext(path)[0] + "-planner-estimates.json"
+    planner = json.load(open(planner_path)) if os.path.exists(planner_path) else None
+    if planner:
+        methods.append(("PlanShift estimator, asking the planner (HypoPG)",
+                        lambda q, options, _known: [-round(planner[q[0] + "|" + ",".join(c)], 2) for c in options]))
+
     print(f"{len(QUERIES)} queries, {len(truth)} query/index pairs, {len(passes)} passes, {len(rows)} experiments\n")
     for threshold in (USEFUL, 0.3):
         count = evaluate(random_scores, truth, known, QUERIES, threshold)["useful"]
@@ -266,6 +273,10 @@ def main():
             errors["history from the other queries"].append(
                 abs(estimate_with_history(query, columns, known, past) - actual))
     print("\nEstimator's error against the measured change, median over all pairs (percentage points):")
+    if planner:
+        errors["asking the planner (its cost change, read as a time change)"] = [
+            abs(planner[q[0] + "|" + ",".join(c)] + 100 * saved(truth[(q[0], ",".join(c))]))
+            for q in QUERIES for c in candidates(q[1], q[2], q[5])]
     for name, values in errors.items():
         print(f"- {name}: {statistics.median(values):.0f}")
     print(f"Query families held out in turn: {len({family(q) for q in QUERIES})}")

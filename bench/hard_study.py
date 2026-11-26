@@ -130,7 +130,7 @@ def psql(script, container=CONTAINER):
 
 
 def setup(_args):
-    run(["docker", "build", "-q", "-t", IMAGE, "-f", os.path.join(HERE, "hypopg.Dockerfile"), HERE])
+    run(["docker", "build", "-q", "-t", IMAGE, os.path.join(HERE, "..", "db")])
     subprocess.run(["docker", "rm", "-f", CONTAINER], capture_output=True)
     run(["docker", "run", "-d", "--name", CONTAINER, "-e", "POSTGRES_USER=planshift", "-e", "POSTGRES_DB=planshift",
          "-e", "POSTGRES_HOST_AUTH_METHOD=trust", IMAGE], capture_output=True)
