@@ -13,6 +13,8 @@ public record ExperimentQueryResult(
         String baselinePlanJson,
         String candidatePlanJson,
         String planDiffSummary,
-        Timing timing
+        Timing timing,
+        /** The query as it was run, with its values written in, for people to read. Null on older results. */
+        String querySql
 ) {
 }

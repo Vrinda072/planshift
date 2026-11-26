@@ -131,4 +131,7 @@ ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS candidate_read_blo
 -- APP or DATABASE: which clock produced the samples above.
 ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS timing_source VARCHAR(10) NOT NULL DEFAULT 'APP';
 
+-- The query that was measured, with its values written in, so a result can say what it is about.
+ALTER TABLE experiment_query_results ADD COLUMN IF NOT EXISTS query_sql TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_eqr_experiment_id ON experiment_query_results (experiment_id);

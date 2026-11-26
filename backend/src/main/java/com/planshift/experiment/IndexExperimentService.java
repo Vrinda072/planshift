@@ -357,7 +357,8 @@ public class IndexExperimentService {
                     0, job.id(), comparison.queryId(), comparison.queryName(),
                     comparison.baselineMedianMs(), comparison.candidateMedianMs(),
                     comparison.absoluteChangeMs(), comparison.percentageChange(), comparison.status(),
-                    toJson(baselinePlan), toJson(candidatePlan), summary, timing);
+                    toJson(baselinePlan), toJson(candidatePlan), summary, timing,
+                    DisplaySql.of(query.sql(), job.params()));
             experimentRepository.insertQueryResult(job.id(), result);
         }
         return median(percentageChanges);

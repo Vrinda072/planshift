@@ -121,8 +121,8 @@ public class ExperimentRepository {
                         + "candidate_median_ms, absolute_change_ms, percentage_change, status, baseline_plan_json, "
                         + "candidate_plan_json, plan_diff_summary, baseline_samples_ms, candidate_samples_ms, p_value, "
                         + "timing_evidence, baseline_db_ms, baseline_hit_blocks, baseline_read_blocks, candidate_db_ms, "
-                        + "candidate_hit_blocks, candidate_read_blocks, timing_source) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        + "candidate_hit_blocks, candidate_read_blocks, timing_source, query_sql) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 experimentId, r.queryId(), r.queryName(), r.baselineMedianMs(), r.candidateMedianMs(),
                 r.absoluteChangeMs(), r.percentageChange(), r.status().name(),
                 r.baselinePlanJson(), r.candidatePlanJson(), r.planDiffSummary(),
@@ -131,7 +131,7 @@ public class ExperimentRepository {
                 t.baselinePlanStats().executionTimeMs(), t.baselinePlanStats().sharedHitBlocks(),
                 t.baselinePlanStats().sharedReadBlocks(),
                 t.candidatePlanStats().executionTimeMs(), t.candidatePlanStats().sharedHitBlocks(),
-                t.candidatePlanStats().sharedReadBlocks(), t.source().name());
+                t.candidatePlanStats().sharedReadBlocks(), t.source().name(), r.querySql());
     }
 
     private static String joinSamples(List<Double> samples) {
@@ -238,7 +238,8 @@ public class ExperimentRepository {
                 rs.getString("baseline_plan_json"),
                 rs.getString("candidate_plan_json"),
                 rs.getString("plan_diff_summary"),
-                mapTiming(rs)
+                mapTiming(rs),
+                rs.getString("query_sql")
         );
     }
 
