@@ -142,17 +142,6 @@ out of 60 on one laptop, not a zero error rate. Check your own setup with the
   way on a similarly selective filter (off by 11, with generous history), or
   with fewer than three of those, a rule of thumb marked low confidence (43).
 
-## Architecture
-
-![The React app calls the Spring Boot API over REST, and the API uses JDBC to reach PostgreSQL](docs/architecture.svg)
-
-The hosting names are for the live demo, where a scheduled GitHub Actions ping
-keeps the free Render instance awake.
-
-No message broker, no ORM, no microservices. The backend packages are `experiment`,
-`benchmark`, `queryplan`, `querybuilder`, `schema`, `dataimport`, `datagen`,
-`workload` and `lock`, under `backend/src/main/java/com/planshift/`.
-
 ## Running it
 
 Needs Docker.
