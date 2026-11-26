@@ -4,10 +4,10 @@
 
 Does adding that index actually help? PLANSHIFT measures it.
 
-![Demo: run the sample experiment, compare four candidate indexes, then open the best one and see its runs, plans and CREATE INDEX statement](docs/demo.gif)
+![Demo: run the sample experiment, compare four candidate indexes, then open one that saved the most and see its result, CREATE INDEX statement, runs and query plans](docs/demo.gif)
 
 *The sample experiment: one query against four candidate indexes, then the
-runs and plans behind the best one.*
+result, runs and plans behind one that saved the most.*
 
 **Live:** [frontend](https://frontend-mauve-two-60.vercel.app) ·
 [backend health](https://planshift-backend.onrender.com/api/health). It's
@@ -32,7 +32,7 @@ indexes and shows what each saves and costs.
   trying the filter column, then the filter column plus the other column,
   recovered 99% of the best saving. Two random picks already got 90%, and a
   learned ranker wasn't worth it.
-- **Tests:** 69 backend (38 unit, 31 against a real Postgres), 27 frontend and
+- **Tests:** 70 backend (39 unit, 31 against a real Postgres), 39 frontend and
   one full-stack browser test, all run in CI.
 
 ## What it does
@@ -144,7 +144,10 @@ out of 60 on one laptop, not a zero error rate. Check your own setup with the
 
 ## Architecture
 
-![Frontend, API and PostgreSQL](docs/architecture.svg)
+![The React app calls the Spring Boot API over REST, and the API uses JDBC to reach PostgreSQL](docs/architecture.svg)
+
+The hosting names are for the live demo, where a scheduled GitHub Actions ping
+keeps the free Render instance awake.
 
 No message broker, no ORM, no microservices. The backend packages are `experiment`,
 `benchmark`, `queryplan`, `querybuilder`, `schema`, `dataimport`, `datagen`,
