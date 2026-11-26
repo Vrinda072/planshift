@@ -32,7 +32,7 @@ indexes and shows what each saves and costs.
   trying the filter column, then the filter column plus the other column,
   recovered 99% of the best saving. Two random picks already got 90%, and a
   learned ranker wasn't worth it.
-- **Tests:** 70 backend (39 unit, 31 against a real Postgres), 39 frontend and
+- **Tests:** 70 backend (39 unit, 31 against a real Postgres), 40 frontend and
   one full-stack browser test, all run in CI.
 
 ## What it does
