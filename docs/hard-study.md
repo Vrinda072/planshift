@@ -69,6 +69,11 @@ uses the same cost model that later chooses the plan. Of 56 candidates it expect
 none saved less than 20% of the time. Asking about one candidate took a median of 49 ms, including starting `psql`,
 against 0.7 s to measure it.
 
+**It is not always this good.** Scored against the [first study's](index-study.md) measurements, the same method
+made 7 bad promises among 53: it expected the cost to at least halve, and the query saved under 20% of its time, in
+some cases getting slower. For one index it expected an 83% lower cost and the query took about 1.8x as long or
+more. That none of the 56 promises here failed should not be read as a rate.
+
 ## What this does not show
 
 - **This is close to the best case for the planner.** Most of the data is generated with evenly spread, independent
@@ -80,10 +85,10 @@ against 0.7 s to measure it.
 - Indexes were tried one at a time. Choosing a *set* of indexes for a workload, and what they cost on writes, is a
   different and harder problem.
 
-**What follows for PlanShift.** Where HypoPG can be installed, planner cost is a far better way to decide which
-candidates are worth measuring than PlanShift's own estimate or a rule, and the measurement is then the check on
-the planner. PlanShift does not do this yet. The study worth running next uses correlated, skewed real data, to find
-where the planner's first pick stops being right.
+**What follows for PlanShift.** Planner cost is a far better way to decide which candidates are worth measuring than
+a rule, and the measurement is then the check on the planner. PlanShift's "Estimate impact first" now does this
+wherever HypoPG is available, and falls back to its own estimate where it isn't. The study worth running next uses
+correlated, skewed real data, to find where the planner's first pick stops being right.
 
 ## Reproduce
 

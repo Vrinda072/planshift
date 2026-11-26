@@ -25,11 +25,14 @@ indexes and shows what each saves and costs.
   found a near-best index with its first pick on all 22 queries. A
   hand-written column rule did no better than random on two picks, because of
   joins. The data is mostly generated, which flatters the planner.
+- **The planner can still be badly wrong:** on the single-filter study, 7 of the
+  53 indexes it expected to halve a query's cost saved under 20% of the time,
+  and some made it slower. Estimates are there to choose what to measure.
 - **Single-filter queries** ([study](docs/index-study.md), 224 experiments):
   trying the filter column, then the filter column plus the other column,
   recovered 99% of the best saving. Two random picks already got 90%, and a
   learned ranker wasn't worth it.
-- **Tests:** 66 backend (38 unit, 28 against a real Postgres), 27 frontend and
+- **Tests:** 69 backend (38 unit, 31 against a real Postgres), 27 frontend and
   one full-stack browser test, all run in CI.
 
 ## What it does
@@ -129,11 +132,15 @@ out of 60 on one laptop, not a zero error rate. Check your own setup with the
   `information_schema`, and the one user value (a filter value) is a bound
   parameter.
 - The UI polls and shows whether a run is queued or which phase it is actually in.
-- "Estimate impact first" runs only plain `EXPLAIN`s. It looks at the whole
-  index (one whose first column the query can't use is expected to do
-  nothing), then takes the median of past runs that used an index the same way
-  on a similarly selective filter. With fewer than three of those it gives a
-  rule of thumb and marks it low confidence.
+- "Estimate impact first" builds nothing and runs only plain `EXPLAIN`s. Where
+  the [HypoPG](https://github.com/HypoPG/hypopg) extension is available (it is
+  in the Docker setup here), it asks Postgres's planner what the query would
+  cost if the index existed, and clears the hypothetical index straight away.
+  Read as a change in time, that was off by a median of 6 percentage points on
+  the [first study's](docs/index-study.md) pairs, with the exceptions above.
+  Without HypoPG it takes the median of past runs that used an index the same
+  way on a similarly selective filter (off by 11, with generous history), or
+  with fewer than three of those, a rule of thumb marked low confidence (43).
 
 ## Architecture
 
@@ -215,5 +222,5 @@ is too noisy to pass reliably.
 
 ## Stack
 
-Java 21, Spring Boot 3.5, Maven, PostgreSQL 16, JDBC, JUnit 5,
+Java 21, Spring Boot 3.5, Maven, PostgreSQL 16 (with HypoPG), JDBC, JUnit 5,
 Testcontainers, React, TypeScript, Vite, Docker Compose.

@@ -31,6 +31,7 @@ justify it. At this data size, measuring all the candidates takes about four sec
 | Two at random | The floor |
 | PlanShift estimator, no history | Rules out indexes whose first column can't serve the query, then ranks by a rule of thumb from the filter's selectivity |
 | PlanShift estimator, with history | The same, but using past runs: all of them from the *other* queries, none from the one being ranked (this and the family split below were added after the first results) |
+| PlanShift estimator, asking the planner | What PlanShift does now where [HypoPG](https://github.com/HypoPG/hypopg) is installed: rank by the planner's cost with a hypothetical index. Added after the study, and scored against the same measurements |
 | Filter-column rule | The filter column, then (filter column, ordering or second column) |
 | Learned ranker | Ridge regression on features of the index and query (which column leads, filter type, selectivity, whether the order is covered, table size). Tested only on a table, a whole dataset, or a family of queries (same kind of filter, ordering and counting; six families) that it was not trained on |
 
@@ -47,6 +48,7 @@ justify it. At this data size, measuring all the candidates takes about four sec
 | Learned ranker, held-out table | 100% | 100% | 3.8% | 3.8% |
 | Learned ranker, held-out dataset | 100% | 100% | 3.8% | 3.8% |
 | Learned ranker, held-out query family | 100% | 100% | 3.8% | 7.7% |
+| PlanShift estimator, asking the planner | 100% | 100% | 3.8% | 3.8% |
 
 The last two columns cover all 26 queries.
 
@@ -54,6 +56,12 @@ The last two columns cover all 26 queries.
 against the measured change, the estimator's median error over all pairs fell from 43 percentage points with no
 history to 11 with it. This is generous to the estimator: its history holds every candidate of 25 other queries,
 measured on the same machine and data, which is more than a new user would have.
+
+**Asking the planner** gives much closer numbers still: reading its change in cost as a change in time, the median
+error is 6 points. The median hides some bad misses. Of 53 pairs where the planner expected the cost to at least
+halve, 7 saved less than 20% of the time, and some made the query slower. For `order_items` filtered on
+`unit_price > 499` with a `LIMIT`, it expected an index on `unit_price` to cut the cost by 83%; in both passes the
+query took about 1.8x as long or more. That is also its one harmful first pick. This is the case for measuring.
 
 **Why random does so well.** For a useful query, 2.6 of its 4.4 candidates are near-best on average, so two draws
 rarely miss all of them.
@@ -81,8 +89,7 @@ which matches the noise measured by the [A/A checks](../README.md#how-noisy-are-
 - 26 queries, written by one person who knows how B-trees work, is a small sample. A one-query gap between methods
   is not a real difference, and the ranker's features encode that same knowledge.
 - Single-table queries with one filter only: no joins or multiple predicates. The [second study](hard-study.md)
-  covers those, and compares against Postgres's own planner using hypothetical indexes (HypoPG), which was the obvious
-  method missing here.
+  covers those.
 - One machine, data that fits in memory, and no measurement of what indexes cost on writes.
 
 ## Reproduce
@@ -94,6 +101,7 @@ docker compose up -d --build
 curl -LO https://raw.githubusercontent.com/fivethirtyeight/uber-tlc-foil-response/master/uber-trip-data/uber-raw-data-apr14.csv
 curl -F file=@uber-raw-data-apr14.csv -F tableName=uber_pickups http://localhost:8080/api/datasets/import
 python3 bench/index_study.py
+python3 bench/planner_estimates.py   # today's planner-based estimates for the same pairs
 python3 bench/analyze_study.py bench/results/study.csv
 ```
 
