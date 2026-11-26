@@ -20,7 +20,8 @@ import java.util.Locale;
  * A quick estimate of what an index would do to a query before running the real experiment. Nothing is executed:
  * only plain EXPLAINs and a lookup in past results.
  *
- * It is deliberately modest. If the index's leading column can't serve the query, it says so. Otherwise it takes
+ * Where HypoPG is available it asks Postgres's planner, which in bench/hard_study.py chose between indexes far
+ * better than a rule. Otherwise it is deliberately modest. If the index's leading column can't serve the query, it says so. Otherwise it takes
  * the median of past runs that were comparable (same kind of access and filter, similar selectivity), and with
  * fewer than {@value #MIN_NEIGHBORS} of those it falls back to a rule of thumb marked as low confidence.
  */
@@ -38,13 +39,16 @@ public class ImpactPredictionService {
     private final PlanParser planParser;
     private final SchemaService schemaService;
     private final ExperimentRepository experimentRepository;
+    private final HypotheticalIndexPlanner planner;
 
     public ImpactPredictionService(QueryBuilderService queryBuilderService,
                                     NamedParameterJdbcTemplate namedJdbc,
                                     ObjectMapper objectMapper,
                                     PlanParser planParser,
                                     SchemaService schemaService,
-                                    ExperimentRepository experimentRepository) {
+                                    ExperimentRepository experimentRepository,
+                                    HypotheticalIndexPlanner planner) {
+        this.planner = planner;
         this.queryBuilderService = queryBuilderService;
         this.namedJdbc = namedJdbc;
         this.objectMapper = objectMapper;
@@ -65,7 +69,33 @@ public class ImpactPredictionService {
 
     public PredictedImpact predict(QuerySpec spec, IndexSpec index) {
         QueryFeatures features = describe(spec, index);
-        String scanType = findScanNode(explainWithoutRunning(queryBuilderService.build(spec))).nodeType();
+        BuiltQuery built = queryBuilderService.build(spec);
+        String scanType = findScanNode(explainWithoutRunning(built)).nodeType();
+
+        HypotheticalIndexPlanner.Answer answer = planner.ask(built, spec.table(), index);
+        if (answer.costs() != null) {
+            return fromPlanner(answer.costs(), features, scanType);
+        }
+        PredictedImpact fallback = predictWithoutPlanner(spec, index, features, scanType);
+        return answer.unavailableBecause() == null ? fallback
+                : fallback.withNote("The planner wasn't asked because " + answer.unavailableBecause() + ". "
+                        + fallback.note());
+    }
+
+    private static PredictedImpact fromPlanner(HypotheticalIndexPlanner.Costs costs, QueryFeatures features,
+                                               String scanType) {
+        boolean helps = costs.usesIndex() && costs.current() > 0;
+        double change = helps ? (costs.withIndex() - costs.current()) / costs.current() * 100 : 0.0;
+        String note = helps
+                ? String.format(Locale.ROOT, "Postgres's planner would use this index, and expects the query's cost "
+                        + "to go from %,.0f to %,.0f. Cost isn't time, and the planner can be wrong, even about "
+                        + "whether the query gets faster, so run the experiment.", costs.current(), costs.withIndex())
+                : "Postgres's planner wouldn't use this index for this query, so expect no change.";
+        return new PredictedImpact(change, "planner", "moderate", 0, features.selectivity(), scanType, note);
+    }
+
+    private PredictedImpact predictWithoutPlanner(QuerySpec spec, IndexSpec index, QueryFeatures features,
+                                                  String scanType) {
 
         if (features.access() == QueryFeatures.Access.NONE) {
             return new PredictedImpact(0.0, "structure", "low", 0, features.selectivity(), scanType,

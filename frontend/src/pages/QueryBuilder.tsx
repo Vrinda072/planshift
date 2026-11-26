@@ -436,9 +436,11 @@ export function QueryBuilder() {
                   {predictedImpact && (
                     <div className="predict">
                       <div className="label">
-                        Estimated change{" "}
+                        {predictedImpact.method === "planner" ? "Planner's cost change" : "Estimated change"}{" "}
                         <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>
-                          ({predictedImpact.method === "historical"
+                          ({predictedImpact.method === "planner"
+                            ? "from Postgres's planner, using a hypothetical index"
+                            : predictedImpact.method === "historical"
                             ? "from past runs"
                             : predictedImpact.method === "structure"
                               ? "from the index shape"

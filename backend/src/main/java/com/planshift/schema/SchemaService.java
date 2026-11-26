@@ -51,11 +51,14 @@ public class SchemaService {
 
         Map<String, List<ColumnInfo>> byTable = new LinkedHashMap<>();
 
+        // Tables only: extensions such as HypoPG add views of their own to the public schema.
         jdbc.query(
-                "SELECT table_name, column_name, data_type, is_nullable "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'public' "
-                        + "ORDER BY table_name, ordinal_position",
+                "SELECT c.table_name, c.column_name, c.data_type, c.is_nullable "
+                        + "FROM information_schema.columns c "
+                        + "JOIN information_schema.tables t "
+                        + "ON t.table_schema = c.table_schema AND t.table_name = c.table_name "
+                        + "WHERE c.table_schema = 'public' AND t.table_type = 'BASE TABLE' "
+                        + "ORDER BY c.table_name, c.ordinal_position",
                 rs -> {
                     String table = rs.getString("table_name");
                     if (INTERNAL_TABLES.contains(table)) {
@@ -97,7 +100,8 @@ public class SchemaService {
             return false;
         }
         Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?",
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ? "
+                        + "AND table_type = 'BASE TABLE'",
                 Integer.class, tableName);
         return count != null && count > 0;
     }

@@ -26,6 +26,9 @@ server:
   port: ${PORT:${SERVER_PORT:8080}}
 
 planshift:
+  estimates:
+    # Where the server offers HypoPG, enable it so estimates can ask the planner about indexes that don't exist.
+    create-hypopg: ${CREATE_HYPOPG:true}
   keep-index:
     # Lets the UI turn a tested index into a lasting one. Leave off wherever strangers can reach the API.
     enabled: ${ALLOW_KEEP_INDEX:false}

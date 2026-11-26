@@ -1,5 +1,6 @@
 package com.planshift.lock;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -36,6 +37,15 @@ public class DatabaseLock {
     /** Empty if someone else holds the lock right now. */
     public Optional<Held> tryAcquire() {
         return lock(false);
+    }
+
+    /**
+     * For brief reads that only need nothing to be changing: shares the lock with other readers until the caller's
+     * transaction ends. False, without waiting, if someone holds it to change the database.
+     */
+    public boolean tryShareInCurrentTransaction(JdbcTemplate jdbc) {
+        return Boolean.TRUE.equals(
+                jdbc.queryForObject("SELECT pg_try_advisory_xact_lock_shared(" + KEY + ")", Boolean.class));
     }
 
     private Optional<Held> lock(boolean wait) {

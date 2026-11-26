@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:16
+    build: ./db
+    image: planshift-postgres-hypopg
     container_name: planshift-postgres
     env_file: .env
     ports:

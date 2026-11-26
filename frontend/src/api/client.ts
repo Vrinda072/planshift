@@ -27,7 +27,7 @@ export interface ImportResult {
 
 export interface PredictedImpact {
   predictedPercentageChange: number;
-  method: "historical" | "structure" | "heuristic";
+  method: "planner" | "historical" | "structure" | "heuristic";
   confidence: "moderate" | "low";
   sampleSize: number;
   selectivity: number;
