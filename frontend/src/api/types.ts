@@ -70,6 +70,8 @@ export interface ExperimentQueryResult {
   planDiffSummary: string;
   /** Absent on results recorded before individual timings were kept. */
   timing?: Timing | null;
+  /** The measured query with its values written in, for reading. Absent on older results. */
+  querySql?: string | null;
 }
 
 export interface Experiment {

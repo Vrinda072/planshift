@@ -10,7 +10,7 @@ import { ImportDataPanel } from "../components/ImportDataPanel";
 import { PageHeader } from "../components/PageHeader";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { candidateIndexes, startCandidateRun } from "../lib/candidates";
-import { changeClassName, formatChangeText } from "../format";
+import { formatChangeText } from "../format";
 
 const OPERATORS = ["=", "!=", ">", "<", ">=", "<=", "LIKE"];
 const AGGREGATES = ["", "COUNT", "SUM", "AVG", "MIN", "MAX"];
@@ -437,7 +437,7 @@ export function QueryBuilder() {
                     <div className="predict">
                       <div className="label">
                         {predictedImpact.method === "planner" ? "Planner's cost change" : "Estimated change"}{" "}
-                        <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>
+                        <span style={{ color: "var(--soft)", fontWeight: 400 }}>
                           ({predictedImpact.method === "planner"
                             ? "from Postgres's planner, using a hypothetical index"
                             : predictedImpact.method === "historical"
@@ -447,7 +447,7 @@ export function QueryBuilder() {
                               : "rule of thumb"}, {predictedImpact.confidence} confidence)
                         </span>
                       </div>
-                      <div className={`predict-value change-value ${changeClassName(predictedImpact.predictedPercentageChange)}`}>
+                      <div className="predict-value change-value">
                         <AnimatedNumber value={predictedImpact.predictedPercentageChange} format={formatChangeText} />
                       </div>
                       <p className="predict-note">

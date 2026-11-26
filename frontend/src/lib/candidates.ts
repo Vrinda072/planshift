@@ -1,4 +1,8 @@
 import { api } from "../api/client";
+import { outcome } from "./outcome";
+import { formatBytes } from "../format";
+import { indexLabel } from "./index";
+import { isUnfinished } from "./status";
 import type { Experiment, MeasurementMode, QuerySpec } from "../api/types";
 
 /**
@@ -54,11 +58,53 @@ export async function startCandidateRun(
   return `/candidates?ids=${started.map((e) => e.experimentId).join(",")}`;
 }
 
-/** The candidate that saved the most, among those counted as an improvement. Null if none was. */
+/** The candidate that saved the most, among those that count as faster. Null if none does. */
 export function bestCandidate(experiments: Experiment[]): Experiment | null {
-  const improved = experiments.filter((e) => e.queryResults[0]?.status === "IMPROVED");
-  if (improved.length === 0) return null;
-  return improved.reduce((best, e) =>
+  const faster = experiments.filter((e) => e.queryResults[0] && outcome(e.queryResults[0]) === "faster");
+  if (faster.length === 0) return null;
+  return faster.reduce((best, e) =>
     e.queryResults[0].percentageChange < best.queryResults[0].percentageChange ? e : best
   );
+}
+
+/**
+ * Each candidate has its own baseline, and gaps of a few tens of percent between them can be noise. So any whose
+ * remaining time is within this factor of the best one's can't be told apart from it.
+ */
+const TIE_FACTOR = 1.3;
+
+/** The best candidate and every other that this run can't rank below it. Empty if none counts as faster. */
+export function leadingCandidates(experiments: Experiment[]): Experiment[] {
+  const best = bestCandidate(experiments);
+  if (!best) return [];
+  const remaining = (e: Experiment) => 100 + e.queryResults[0].percentageChange;
+  return experiments.filter(
+    (e) => e.queryResults[0] && outcome(e.queryResults[0]) === "faster" && remaining(e) <= remaining(best) * TIE_FACTOR
+  );
+}
+
+/** The one-line answer above the comparison. Never advises against an index that wasn't given enough runs to judge. */
+export function candidateFinding(experiments: Experiment[]): string {
+  const waiting = experiments.filter((e) => isUnfinished(e.status)).length;
+  if (waiting > 0) {
+    return `Measuring one at a time. ${experiments.length - waiting} of ${experiments.length} done.`;
+  }
+  const best = bestCandidate(experiments);
+  if (!best) {
+    const unsure = experiments.filter((e) => e.queryResults[0] && outcome(e.queryResults[0]) === "unsure").length;
+    if (unsure === 0) {
+      return "None of these indexes made a difference that counts, so there's no reason here to add one.";
+    }
+    return unsure === experiments.length
+      ? "Too few runs to tell whether any of these indexes helps. Run them again with 4 or more."
+      : `None of these indexes counts as faster yet, but ${unsure} of ${experiments.length} had too few runs to tell. Run those again with 4 or more before ruling them out.`;
+  }
+  const size = (e: Experiment) => (e.indexSizeBytes != null ? formatBytes(e.indexSizeBytes) : "unknown size");
+  const leaders = leadingCandidates(experiments);
+  if (leaders.length > 1) {
+    const smallest = leaders.reduce((a, b) => ((b.indexSizeBytes ?? Infinity) < (a.indexSizeBytes ?? Infinity) ? b : a));
+    return `${leaders.map(indexLabel).join(" and ")} saved the most, and this run can't tell them apart. The smallest of them is ${indexLabel(smallest)}, at ${size(smallest)}.`;
+  }
+  const saved = Math.abs(best.queryResults[0].percentageChange).toFixed(1);
+  return `${indexLabel(best)} saved the most: ${saved}% less median time, for an index of ${size(best)}.`;
 }

@@ -9,7 +9,7 @@ export function NotFound() {
       title="Page not found"
       sub={
         <>
-          There is nothing at this address. Go back to the <Link to="/" style={{ color: "var(--accent)" }}>overview</Link> or
+          There is nothing at this address. Go back to the <Link to="/">overview</Link> or
           search with the box above.
         </>
       }

@@ -70,17 +70,11 @@ export const IconArrowRight = () => (
   </Svg>
 );
 
-/** Before and after: the tall bar is the query as it was, the short one is what the index made of it. */
+/** Two overlapping suns: before, and after. */
 export const IconMark = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-    <defs>
-      <linearGradient id="mark-g" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#0070f3" />
-        <stop offset="1" stopColor="#7928ca" />
-      </linearGradient>
-    </defs>
-    <rect x="3" y="3" width="6" height="16" rx="2" fill="url(#mark-g)" />
-    <rect x="13" y="10" width="6" height="9" rx="2" fill="#17b26a" />
+  <svg width="40" height="28" viewBox="0 0 40 28" aria-hidden="true">
+    <circle cx="26" cy="14" r="10" fill="#ffbe3d" />
+    <circle cx="14" cy="14" r="14" fill="#ff7a59" />
   </svg>
 );
 

@@ -1,10 +1,11 @@
 import { Fragment, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { Experiment } from "../api/types";
-import { changeClassName, formatBytes, formatChangeText, formatDate, formatMs } from "../format";
-import { AnimatedNumber } from "../components/AnimatedNumber";
-import { Hero } from "../components/Hero";
+import type { Experiment, ExperimentQueryResult } from "../api/types";
+import { formatBytes, formatChangeText, formatDate, formatMs } from "../format";
+import { ResultBlocks } from "../components/ResultBlocks";
+import { ResultCards } from "../components/ResultCards";
+import { headline } from "../lib/summary";
 import { ExperimentProgress } from "../components/ExperimentProgress";
 import { PageHeader } from "../components/PageHeader";
 import { PlanTreeCompare } from "../components/PlanTreeCompare";
@@ -13,14 +14,17 @@ import { useExperimentPolling } from "../hooks/useExperimentPolling";
 import { exportCsv, exportJson } from "../lib/export";
 import { strategyChange } from "../lib/plan";
 import { indexLabel, isControl, typeLabel } from "../lib/index";
-import { evidenceNote, range } from "../lib/timing";
+import { clockName, evidenceNote, range } from "../lib/timing";
 import { TimingDetail } from "../components/TimingDetail";
 import { IndexPanel } from "../components/IndexPanel";
+import { QueryLine } from "../components/QueryLine";
+import { OUTCOME_LABEL, changeClass, outcome } from "../lib/outcome";
 import { RUN_ORDER_LABEL } from "../lib/runOrder";
 import { belowNoiseFloor } from "../lib/noise";
 import { IconDownload } from "../components/Icons";
 
-function MetaRow({ experiment }: { experiment: Experiment }) {
+/** {@code compact} leaves out what a finished one-query result already shows above. */
+function MetaRow({ experiment, compact = false }: { experiment: Experiment; compact?: boolean }) {
   const target = indexLabel(experiment);
   return (
     <div className="meta-row">
@@ -28,11 +32,13 @@ function MetaRow({ experiment }: { experiment: Experiment }) {
         <span className="meta-k">Type</span>
         {typeLabel(experiment)}
       </span>
-      <span className="meta-item">
-        <span className="meta-k">{isControl(experiment) ? "Table" : "Index on"}</span>
-        <span className="mono">{target}</span>
-      </span>
-      {experiment.indexSizeBytes != null && experiment.indexBuildMs != null && (
+      {!compact && (
+        <span className="meta-item">
+          <span className="meta-k">{isControl(experiment) ? "Table" : "Index on"}</span>
+          <span className="mono">{target}</span>
+        </span>
+      )}
+      {!compact && experiment.indexSizeBytes != null && experiment.indexBuildMs != null && (
         <span className="meta-item">
           <span className="meta-k">Index cost</span>
           <span className="mono">
@@ -59,6 +65,22 @@ function MetaRow({ experiment }: { experiment: Experiment }) {
         {formatDate(experiment.createdAt)}
       </span>
     </div>
+  );
+}
+
+function Details({ result }: { result: ExperimentQueryResult }) {
+  return (
+    <>
+      {result.timing && <TimingDetail timing={result.timing} />}
+      <h3>Full query plan</h3>
+      <p className="accordion-summary">
+        {result.planDiffSummary.replace(/Scan\/execution strategy changed: /g, "")}
+      </p>
+      <p className="accordion-hint">
+        Each box is one step in Postgres's real execution plan. Outlined boxes changed between before and after.
+      </p>
+      <PlanTreeCompare baselinePlanJson={result.baselinePlanJson} candidatePlanJson={result.candidatePlanJson} />
+    </>
   );
 }
 
@@ -149,127 +171,140 @@ export function ExperimentResult() {
   }
 
   const results = experiment.queryResults;
+  const single = results.length === 1 ? results[0] : null;
+  const target = indexLabel(experiment);
   return (
     <div>
       <PageHeader
-        title={
+        title={headline(experiment)}
+        sub={
           <>
-            Experiment #{experiment.experimentId}{" "}
-            <span className="status completed" style={{ verticalAlign: "middle", marginLeft: 6, fontSize: 13, fontWeight: 400, letterSpacing: 0 }}>
-              Completed
-            </span>
+            Experiment #{experiment.experimentId} · {isControl(experiment) ? "table" : "index on"} {target}{" "}
+            <span className="status completed">Completed</span>
           </>
         }
         actions={
           <>
-            <button className="btn btn-sm" onClick={copyLink}>{copied ? "Copied" : "Copy link"}</button>
-            <button className="btn btn-sm" onClick={() => exportCsv(experiment)}><IconDownload />CSV</button>
-            <button className="btn btn-sm" onClick={() => exportJson(experiment)}><IconDownload />JSON</button>
+            <button className="btn" onClick={copyLink}>{copied ? "Copied" : "Copy link"}</button>
+            <button className="btn" onClick={() => exportCsv(experiment)}><IconDownload />CSV</button>
+            <button className="btn" onClick={() => exportJson(experiment)}><IconDownload />JSON</button>
             {experiment.experimentType === "INDEX_ADD" && (
-              <button className="btn btn-primary btn-sm" onClick={rerun} disabled={rerunning}>
+              <button className="btn btn-primary" onClick={rerun} disabled={rerunning}>
                 {rerunning ? "Starting..." : "Run again"}
               </button>
             )}
           </>
         }
-      >
-        <MetaRow experiment={experiment} />
-      </PageHeader>
+      />
 
       {belowNoiseFloor(results) && (
-        <div className="inline-warning" style={{ marginBottom: 16 }}>
+        <div className="inline-warning">
           Every query here ran in under 1 ms, which is mostly timer jitter. Try a larger table before reading much into
           the percentages.
         </div>
       )}
 
-      <Hero experiment={experiment} eyebrow={<>Result · threshold {(experiment.thresholdFraction * 100).toFixed(0)}%</>} />
+      <QueryLine experiment={experiment} />
+      <ResultBlocks experiment={experiment} />
+      {!isControl(experiment) && (
+        <p className="trust-line">
+          Even a passed timing check can come from the machine speeding up or slowing down. An A/A check shows how often
+          that happens here.
+        </p>
+      )}
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2 className="panel-title">Results</h2>
-          <span className="panel-meta">Median of all runs, with the fastest and slowest below</span>
-        </div>
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Query</th>
-                <th className="num">Before</th>
-                <th className="num">After</th>
-                <th className="num">Change</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {results.map((r) => {
-                const isOpen = expanded.has(r.queryId);
-                return (
-                  <Fragment key={r.queryId}>
-                    <tr>
-                      <td>
-                        <div className="cell-main">{r.queryName}</div>
-                        {(() => {
-                          const change = strategyChange(r.baselinePlanJson, r.candidatePlanJson);
-                          return change ? <div className="cell-sub">{change.before} to {change.after}</div> : null;
-                        })()}
-                        <button className="see-why-toggle" onClick={() => toggle(r.queryId)} aria-expanded={isOpen}>
-                          {isOpen ? "Hide details" : "See runs and plan"}
-                        </button>
-                      </td>
-                      <td className="num mono sub">
-                        <AnimatedNumber value={r.baselineMedianMs} format={formatMs} />
-                        {r.timing && <div className="cell-range">{range(r.timing.baselineSamplesMs)}</div>}
-                      </td>
-                      <td className="num mono">
-                        <AnimatedNumber value={r.candidateMedianMs} format={formatMs} />
-                        {r.timing && <div className="cell-range">{range(r.timing.candidateSamplesMs)}</div>}
-                      </td>
-                      <td className="num">
-                        <span className={`change-value ${changeClassName(r.percentageChange)}`}>
-                          {formatChangeText(r.percentageChange)}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            r.status === "IMPROVED" ? "badge-improved" : r.status === "REGRESSED" ? "badge-regressed" : "badge-unchanged"
-                          }`}
-                        >
-                          {r.status === "IMPROVED" ? "Improved" : r.status === "REGRESSED" ? "Regressed" : "Unchanged"}
-                        </span>
-                        <div className="cell-range">{evidenceNote(r, experiment.thresholdFraction)}</div>
-                      </td>
-                    </tr>
-                    {/* Always mounted so the expand/collapse can animate its height
-                        via the grid-rows trick; a table row can't transition from
-                        height 0 on its own. */}
-                    <tr className="no-entrance accordion-row">
-                      <td colSpan={5}>
-                        <div className={`accordion${isOpen ? " open" : ""}`}>
-                          <div className="accordion-inner">
-                            <div className="accordion-body">
-                              {r.timing && <TimingDetail timing={r.timing} />}
-                              <p className="accordion-summary">{r.planDiffSummary}</p>
-                              <p className="accordion-hint">
-                                Each box is one step in Postgres's real execution plan for this query. Highlighted
-                                boxes changed between before and after.
-                              </p>
-                              <PlanTreeCompare baselinePlanJson={r.baselinePlanJson} candidatePlanJson={r.candidatePlanJson} />
+      {single ? (
+        <>
+          <ResultCards experiment={experiment} planOpen={expanded.has(single.queryId)}
+            onShowPlan={() => toggle(single.queryId)} />
+          <div className={`accordion${expanded.has(single.queryId) ? " open" : ""}`}>
+            <div className="accordion-inner">
+              <div className="accordion-body">
+                <Details result={single} />
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <section className="panel">
+            <div className="panel-head">
+              <h2 className="panel-title">Each query</h2>
+              <span className="panel-meta">
+                Median of all runs{results[0].timing && `, ${clockName(results[0].timing)}`}, with the fastest and
+                slowest below
+              </span>
+            </div>
+            <div className="table-scroll">
+              <table className="stack">
+                <thead>
+                  <tr>
+                    <th>Query</th>
+                    <th className="num">Before</th>
+                    <th className="num">After</th>
+                    <th className="num">Change</th>
+                    <th>Verdict</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((r) => {
+                    const isOpen = expanded.has(r.queryId);
+                    const change = strategyChange(r.baselinePlanJson, r.candidatePlanJson);
+                    return (
+                      <Fragment key={r.queryId}>
+                        <tr>
+                          <td data-label="Query">
+                            <div className="cell-main">{r.queryName}</div>
+                            {change && <div className="cell-sub">{change.before} to {change.after}</div>}
+                            <button className="btn-link see-why-toggle" onClick={() => toggle(r.queryId)}
+                              aria-expanded={isOpen}>
+                              {isOpen ? "Hide details" : "See runs and plan"}
+                            </button>
+                          </td>
+                          <td className="num sub" data-label="Before">
+                            <span className="cell-time">{formatMs(r.baselineMedianMs)}</span>
+                            {r.timing && <div className="cell-range">{range(r.timing.baselineSamplesMs)}</div>}
+                          </td>
+                          <td className="num" data-label="After">
+                            <span className="cell-time">{formatMs(r.candidateMedianMs)}</span>
+                            {r.timing && <div className="cell-range">{range(r.timing.candidateSamplesMs)}</div>}
+                          </td>
+                          <td className="num" data-label="Change">
+                            <span className={`change-value ${changeClass(r)}`}>
+                              {formatChangeText(r.percentageChange)}
+                            </span>
+                          </td>
+                          <td data-label="Verdict">
+                            <span className={`badge badge-${outcome(r)}`}>{OUTCOME_LABEL[outcome(r)]}</span>
+                            <div className="cell-range">{evidenceNote(r, experiment.thresholdFraction)}</div>
+                          </td>
+                        </tr>
+                        {/* Always mounted so the expand/collapse can animate its height
+                            via the grid-rows trick; a table row can't transition from
+                            height 0 on its own. */}
+                        <tr className="no-entrance accordion-row">
+                          <td colSpan={5}>
+                            <div className={`accordion${isOpen ? " open" : ""}`}>
+                              <div className="accordion-inner">
+                                <div className="accordion-body">
+                                  <Details result={r} />
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                          </td>
+                        </tr>
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <div className="cards cards-single"><IndexPanel experiment={experiment} showCost /></div>
+        </>
+      )}
 
-      <IndexPanel experiment={experiment} />
+      <MetaRow experiment={experiment} compact={single !== null} />
     </div>
   );
 }

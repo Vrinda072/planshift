@@ -1,5 +1,6 @@
 import type { Experiment } from "../api/types";
 import { indexLabel, isControl } from "./index";
+import { outcome } from "./outcome";
 
 /**
  * The one-sentence finding for a completed run. Every figure is computed from
@@ -10,8 +11,8 @@ export function verdict(experiment: Experiment): string | null {
   if (experiment.status !== "COMPLETED" || experiment.overallPercentageChange === null || results.length === 0) {
     return null;
   }
-  const improved = results.filter((r) => r.status === "IMPROVED").length;
-  const regressed = results.filter((r) => r.status === "REGRESSED").length;
+  const improved = results.filter((r) => outcome(r) === "faster").length;
+  const regressed = results.filter((r) => outcome(r) === "slower").length;
   if (isControl(experiment)) {
     const moved = results.length - results.filter((r) => r.status === "UNCHANGED").length;
     const drift = Math.max(...results.map((r) => Math.abs(r.percentageChange))).toFixed(1);

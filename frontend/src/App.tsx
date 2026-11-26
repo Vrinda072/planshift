@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Nav } from "./components/Nav";
 import { CommandPalette } from "./components/CommandPalette";
-import { Topbar } from "./components/Topbar";
 import { Candidates } from "./pages/Candidates";
 import { Compare } from "./pages/Compare";
 import { NotFound } from "./pages/NotFound";
@@ -52,13 +51,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <div className="app">
-        <Nav />
-        <div className="main-col">
-          <Topbar onSearch={() => setPaletteOpen(true)} />
-          <main className="content">
-            <AnimatedRoutes />
-          </main>
-        </div>
+        <Nav onSearch={() => setPaletteOpen(true)} />
+        <main className="content">
+          <AnimatedRoutes />
+        </main>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </BrowserRouter>

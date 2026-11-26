@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeClassName, formatChangeText, formatDate, formatMs } from "./format";
+import { formatChangeText, formatDate, formatMs } from "./format";
 
 describe("formatChangeText", () => {
   it("formats a positive change with an up arrow", () => {
@@ -16,24 +16,6 @@ describe("formatChangeText", () => {
 
   it("treats a null-ish value as zero rather than throwing", () => {
     expect(formatChangeText(null as unknown as number)).toBe("→ 0.0%");
-  });
-});
-
-describe("changeClassName", () => {
-  it("maps positive to change-positive", () => {
-    expect(changeClassName(5)).toBe("change-positive");
-  });
-
-  it("maps negative to change-negative", () => {
-    expect(changeClassName(-5)).toBe("change-negative");
-  });
-
-  it("maps zero to change-neutral", () => {
-    expect(changeClassName(0)).toBe("change-neutral");
-  });
-
-  it("maps a null-ish value to change-neutral rather than throwing", () => {
-    expect(changeClassName(null as unknown as number)).toBe("change-neutral");
   });
 });
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Experiment, MeasurementMode } from "../api/types";
 import { RunOrderSelect } from "../components/RunOrderSelect";
-import { changeClassName, formatChangeText, formatDate } from "../format";
+import { formatChangeText, formatDate } from "../format";
 import { PageHeader } from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
@@ -83,7 +83,7 @@ export function Experiments() {
           <>
             Each run times the 10-query workload without and with a temporary index on <code>orders.customer_id</code>.
             For your own query and column, use the{" "}
-            <Link to="/query-builder" style={{ color: "var(--accent)" }}>query builder</Link>.
+            <Link to="/query-builder">query builder</Link>.
           </>
         }
         actions={
@@ -153,7 +153,7 @@ export function Experiments() {
         )}
         {rows.length > 0 && (
           <div className="table-scroll">
-            <table>
+            <table className="stack sortable">
               <thead>
                 <tr>
                   <th style={{ width: 36 }} />
@@ -163,34 +163,34 @@ export function Experiments() {
                   <th className="num">Threshold</th>
                   <th><button className="th-sort" onClick={() => toggleSort("ran")}>Ran{sortMark("ran")}</button></th>
                   <th>Status</th>
-                  <th className="num"><button className="th-sort" onClick={() => toggleSort("result")}>Change{sortMark("result")}</button></th>
+                  <th className="num"><button className="th-sort" onClick={() => toggleSort("result")}>Median change{sortMark("result")}</button></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((exp) => (
                   <tr key={exp.experimentId} className="clickable" onClick={() => navigate(`/experiments/${exp.experimentId}`)}>
-                    <td onClick={(e) => e.stopPropagation()}>
+                    <td className="stack-check" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selected.includes(exp.experimentId)}
                         onChange={() => toggleSelected(exp.experimentId)} aria-label={`Select experiment ${exp.experimentId}`} />
                     </td>
-                    <td>
+                    <td data-label="Experiment">
                       <Link to={`/experiments/${exp.experimentId}`} className="row-link" onClick={(e) => e.stopPropagation()}>
                         <span className="row-id">#{exp.experimentId}</span>{" "}
                         <span className="cell-main">{typeLabel(exp)}</span>
                       </Link>
                     </td>
-                    <td className="mono sub">{indexLabel(exp)}</td>
-                    <td className="num tnum">{exp.repetitions}</td>
-                    <td className="num tnum">{(exp.thresholdFraction * 100).toFixed(0)}%</td>
-                    <td className="sub">{formatDate(exp.createdAt)}</td>
-                    <td>
+                    <td className="sub" data-label="Index on">{indexLabel(exp)}</td>
+                    <td className="num" data-label="Runs">{exp.repetitions}</td>
+                    <td className="num" data-label="Threshold">{(exp.thresholdFraction * 100).toFixed(0)}%</td>
+                    <td className="sub" data-label="Ran">{formatDate(exp.createdAt)}</td>
+                    <td data-label="Status">
                       <span className={`status ${exp.status.toLowerCase()}`}>
                         {STATUS_LABEL[exp.status]}
                       </span>
                     </td>
-                    <td className="num">
+                    <td className="num" data-label="Median change">
                       {exp.status === "COMPLETED" && exp.overallPercentageChange !== null ? (
-                        <span className={`change-value ${changeClassName(exp.overallPercentageChange)}`}>
+                        <span className="change-value">
                           {formatChangeText(exp.overallPercentageChange)}
                         </span>
                       ) : (

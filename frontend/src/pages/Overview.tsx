@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Experiment, ExperimentQueryResult } from "../api/types";
-import { changeClassName, formatChangeText, formatDate } from "../format";
-import { Hero } from "../components/Hero";
+import { formatChangeText, formatDate } from "../format";
+import { ResultBlocks } from "../components/ResultBlocks";
+import { QueryLine } from "../components/QueryLine";
+import { outcome } from "../lib/outcome";
+import { headline } from "../lib/summary";
 import { PageHeader } from "../components/PageHeader";
-import { RunBars } from "../components/RunBars";
 import { Skeleton } from "../components/Skeleton";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { STATUS_LABEL } from "../lib/status";
 import { SAMPLE_QUERY, candidateIndexes, startCandidateRun } from "../lib/candidates";
 import { indexLabel, isControl, typeLabel } from "../lib/index";
-
-const TREND_RUNS = 12;
 
 export function Overview() {
   const [experiments, setExperiments] = useState<Experiment[] | null>(null);
@@ -32,24 +32,9 @@ export function Overview() {
         if (last) api.getExperiment(last.experimentId).then(setLatest).catch(() => setLatest(null));
       })
       .catch((e) => setError(e.message));
-    api.listRegressions().then(setRegressions).catch(() => setRegressions(null));
+    api.listRegressions().then((all) => setRegressions(all.filter((r) => outcome(r) === "slower"))).catch(() => setRegressions(null));
   }, []);
 
-  const completed = useMemo(
-    () => (experiments ?? []).filter((e) => e.status === "COMPLETED" && !isControl(e) && e.overallPercentageChange !== null),
-    [experiments]
-  );
-
-  const trend = useMemo(
-    () =>
-      [...completed]
-        .sort((a, b) => a.experimentId - b.experimentId)
-        .slice(-TREND_RUNS)
-        .map((e) => ({ id: e.experimentId, value: e.overallPercentageChange as number })),
-    [completed]
-  );
-
-  const best = completed.length ? Math.min(...completed.map((e) => e.overallPercentageChange as number)) : null;
   // The running one if there is one, otherwise whatever is next in line.
   const running =
     (experiments ?? []).find((e) => e.status === "RUNNING") ?? (experiments ?? []).find((e) => e.status === "QUEUED");
@@ -70,21 +55,16 @@ export function Overview() {
     <div>
       <PageHeader
         title="Overview"
-        sub={latest ? "What your last index experiment did to the workload." : experiments === null ? " " : "No completed experiments yet. Run one to see what an index does to your queries."}
+        sub={latest ? "What your latest index experiment measured." : experiments === null ? " " : "No completed experiments yet. Run one to see what an index does to your queries."}
         actions={
-          <>
-            <button
-              className="btn"
-              onClick={trySample}
-              disabled={sampling}
-              title="Find one customer's latest orders, and try four indexes for it"
-            >
-              {sampling ? "Starting..." : "Try a sample experiment"}
-            </button>
-            <button className="btn btn-primary" onClick={() => navigate("/experiments")}>
-              New experiment
-            </button>
-          </>
+          <button
+            className="btn"
+            onClick={trySample}
+            disabled={sampling}
+            title="Find one customer's latest orders, and try four indexes for it"
+          >
+            {sampling ? "Starting..." : "Try a sample experiment"}
+          </button>
         }
       />
 
@@ -100,41 +80,88 @@ export function Overview() {
       )}
 
       {latest && latest.overallPercentageChange !== null && (
-        <Hero
-          experiment={latest}
-          eyebrow={
-            <>
-              Latest run · #{latest.experimentId} · <span className="mono">{indexLabel(latest)}</span> · {formatDate(latest.createdAt)}
-            </>
-          }
-          aside={<Link to={`/experiments/${latest.experimentId}`} className="hero-link">Open result</Link>}
-        />
+        <>
+          <div className="latest-head">
+            <h2>{headline(latest)}</h2>
+            <p>
+              Latest run, #{latest.experimentId} on {indexLabel(latest)}, {formatDate(latest.createdAt)}.{" "}
+              <Link to={`/experiments/${latest.experimentId}`}>Open result</Link>
+            </p>
+          </div>
+          <QueryLine experiment={latest} />
+          <ResultBlocks experiment={latest} />
+        </>
       )}
 
       <div className="grid grid-2-1">
         <section className="panel">
           <div className="panel-head">
-            <h2 className="panel-title">History</h2>
-            <span className="panel-meta">
-              {completed.length} {completed.length === 1 ? "run" : "runs"}
-              {best !== null && <> · best {formatChangeText(best)}</>}
-            </span>
+            <h2 className="panel-title">Recent experiments</h2>
+            <span className="panel-meta"><Link to="/experiments">All experiments</Link></span>
           </div>
-          <div className="panel-body">
-            {trend.length > 0 ? (
-              <>
-                <RunBars runs={trend} />
-                <div className="legend" style={{ marginTop: 12 }}>
-                  <span><i style={{ background: "var(--good)" }} />Faster than baseline</span>
-                  <span><i style={{ background: "var(--bad)" }} />Slower</span>
-                </div>
-              </>
-            ) : (
-              <div className="empty-state" style={{ padding: "40px 0" }}>{experiments === null ? "Loading..." : "Nothing to chart yet."}</div>
-            )}
-          </div>
+          {!error && experiments === null && <Skeleton rows={4} columns={5} />}
+          {experiments && experiments.length === 0 && (
+            <div className="empty-state">
+              <strong>No experiments yet</strong>
+              Start one from the Experiments page.
+            </div>
+          )}
+          {experiments && experiments.length > 0 && (
+            <div className="table-scroll">
+              <table className="stack">
+                <thead>
+                  <tr>
+                    <th>Experiment</th>
+                    <th>Index on</th>
+                    <th>Ran</th>
+                    <th>Status</th>
+                    <th className="num">Median change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {experiments.slice(0, 5).map((exp) => (
+                    <tr
+                      key={exp.experimentId}
+                      className="clickable"
+                      onClick={() => navigate(`/experiments/${exp.experimentId}`)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          navigate(`/experiments/${exp.experimentId}`);
+                        }
+                      }}
+                    >
+                    <td data-label="Experiment">
+                      <span>
+                        <span className="row-id">#{exp.experimentId}</span>{" "}
+                        <span className="cell-main">{typeLabel(exp)}</span>
+                      </span>
+                    </td>
+                      <td className="sub" data-label="Index on">{indexLabel(exp)}</td>
+                      <td className="sub" data-label="Ran">{formatDate(exp.createdAt)}</td>
+                      <td data-label="Status">
+                        <span className={`status ${exp.status.toLowerCase()}`}>
+                          {STATUS_LABEL[exp.status]}
+                        </span>
+                      </td>
+                      <td className="num" data-label="Median change">
+                        {exp.status === "COMPLETED" && exp.overallPercentageChange !== null ? (
+                          <span className="change-value">
+                            {formatChangeText(exp.overallPercentageChange)}
+                          </span>
+                        ) : (
+                          <span className="sub">–</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
-
         <section className="panel">
           <div className="panel-head">
             <h2 className="panel-title">Slower than before</h2>
@@ -161,73 +188,6 @@ export function Overview() {
           )}
         </section>
       </div>
-
-      <section className="panel">
-        <div className="panel-head">
-          <h2 className="panel-title">Recent experiments</h2>
-          <span className="panel-meta"><Link to="/experiments">All experiments</Link></span>
-        </div>
-        {!error && experiments === null && <Skeleton rows={4} columns={5} />}
-        {experiments && experiments.length === 0 && (
-          <div className="empty-state">
-            <strong>No experiments yet</strong>
-            Start one from the Experiments page.
-          </div>
-        )}
-        {experiments && experiments.length > 0 && (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Experiment</th>
-                  <th>Index on</th>
-                  <th>Ran</th>
-                  <th>Status</th>
-                  <th className="num">Change</th>
-                </tr>
-              </thead>
-              <tbody>
-                {experiments.slice(0, 5).map((exp) => (
-                  <tr
-                    key={exp.experimentId}
-                    className="clickable"
-                    onClick={() => navigate(`/experiments/${exp.experimentId}`)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate(`/experiments/${exp.experimentId}`);
-                      }
-                    }}
-                  >
-                    <td>
-                      <span className="row-id">#{exp.experimentId}</span>{" "}
-                      <span className="cell-main">{typeLabel(exp)}</span>
-                    </td>
-                    <td className="mono sub">{indexLabel(exp)}</td>
-                    <td className="sub">{formatDate(exp.createdAt)}</td>
-                    <td>
-                      <span className={`status ${exp.status.toLowerCase()}`}>
-                        {STATUS_LABEL[exp.status]}
-                      </span>
-                    </td>
-                    <td className="num">
-                      {exp.status === "COMPLETED" && exp.overallPercentageChange !== null ? (
-                        <span className={`change-value ${changeClassName(exp.overallPercentageChange)}`}>
-                          {formatChangeText(exp.overallPercentageChange)}
-                        </span>
-                      ) : (
-                        <span className="sub">–</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

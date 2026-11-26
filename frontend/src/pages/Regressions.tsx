@@ -5,6 +5,7 @@ import type { ExperimentQueryResult } from "../api/types";
 import { formatChangeText, formatMs } from "../format";
 import { PageHeader } from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
+import { outcome } from "../lib/outcome";
 
 export function Regressions() {
   const [regressions, setRegressions] = useState<ExperimentQueryResult[] | null>(null);
@@ -12,14 +13,14 @@ export function Regressions() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.listRegressions().then(setRegressions).catch((e) => setError(e.message));
+    api.listRegressions().then((all) => setRegressions(all.filter((r) => outcome(r) === "slower"))).catch((e) => setError(e.message));
   }, []);
 
   return (
     <div>
       <PageHeader
         title="Regressions"
-        sub="Every query result that got slower than the threshold, across all experiments."
+        sub="Every query result that got slower past the threshold, across all experiments. Results with too few runs to check are left out."
       />
       {error && <div className="error-banner">{error}</div>}
 
@@ -37,7 +38,7 @@ export function Regressions() {
         )}
         {regressions && regressions.length > 0 && (
           <div className="table-scroll">
-            <table>
+            <table className="stack">
               <thead>
                 <tr>
                   <th>Query</th>
@@ -62,11 +63,11 @@ export function Regressions() {
                       }
                     }}
                   >
-                    <td className="cell-main">{r.queryName}</td>
-                    <td className="row-id">#{r.experimentId}</td>
-                    <td className="num mono sub">{formatMs(r.baselineMedianMs)}</td>
-                    <td className="num mono sub">{formatMs(r.candidateMedianMs)}</td>
-                    <td className="num">
+                    <td className="cell-main" data-label="Query">{r.queryName}</td>
+                    <td className="row-id" data-label="Experiment">#{r.experimentId}</td>
+                    <td className="num sub" data-label="Before">{formatMs(r.baselineMedianMs)}</td>
+                    <td className="num sub" data-label="After">{formatMs(r.candidateMedianMs)}</td>
+                    <td className="num" data-label="Change">
                       <span className="change-value change-positive">{formatChangeText(r.percentageChange)}</span>
                     </td>
                   </tr>

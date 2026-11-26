@@ -21,7 +21,7 @@ export function Queries() {
           <>
             The fixed, read-only queries the built-in experiment runs. No arbitrary SQL is accepted here; to try
             your own, use the{" "}
-            <Link to="/query-builder" style={{ color: "var(--accent)" }}>query builder</Link>.
+            <Link to="/query-builder">query builder</Link>.
           </>
         }
       />
@@ -34,13 +34,13 @@ export function Queries() {
             <h2 className="panel-title">Benchmark queries</h2>
             <span className="panel-meta">{queries.length} queries</span>
           </div>
-          {queries.map((q, i) => (
-            <div className="step" key={q.id} style={{ animation: `fadeInUp 240ms var(--ease-out) ${i * 30}ms both` }}>
+          {queries.map((q) => (
+            <div className="step" key={q.id} >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
                 <span className="cell-main" style={{ fontSize: 14 }}>{q.name}</span>
                 <span className="tag">{q.category.replace(/_/g, " ")}</span>
               </div>
-              <p style={{ margin: "0 0 12px", color: "var(--ink-2)", fontSize: 13 }}>{q.description}</p>
+              <p style={{ margin: "0 0 12px", color: "var(--soft)", fontSize: 13 }}>{q.description}</p>
               <div className="sql-block">
                 <pre className="code" style={{ paddingRight: 64 }}>{q.sql}</pre>
                 <CopyButton text={q.sql} />

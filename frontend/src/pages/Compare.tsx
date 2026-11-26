@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
+import { changeClass } from "../lib/outcome";
 import type { Experiment } from "../api/types";
-import { changeClassName, formatChangeText, formatMs } from "../format";
+import { formatChangeText, formatMs } from "../format";
 import { PageHeader } from "../components/PageHeader";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { indexLabel } from "../lib/index";
@@ -41,7 +42,7 @@ export function Compare() {
         title="Compare experiments"
         sub={
           <>
-            Pick two runs on the <Link to="/experiments" style={{ color: "var(--accent)" }}>experiments page</Link> and
+            Pick two runs on the <Link to="/experiments">experiments page</Link> and
             choose Compare.
           </>
         }
@@ -68,10 +69,10 @@ export function Compare() {
           {[left, right].map((e) => (
             <Link key={e.experimentId} to={`/experiments/${e.experimentId}`} className="compare-side">
               <span className="sub">{label(e)}</span>
-              <span className={`compare-figure change-value ${e.overallPercentageChange === null ? "" : changeClassName(e.overallPercentageChange)}`}>
+              <span className="compare-figure change-value">
                 {e.overallPercentageChange === null ? "–" : formatChangeText(e.overallPercentageChange)}
               </span>
-              <span className="cell-sub">median across {e.queryResults.length} queries</span>
+              <span className="cell-sub">median across {e.queryResults.length} {e.queryResults.length === 1 ? "query" : "queries"}</span>
             </Link>
           ))}
         </div>
@@ -109,12 +110,12 @@ export function Compare() {
                     <td className="num tnum sub">{formatMs(l.baselineMedianMs)}</td>
                     <td className="num tnum">{formatMs(l.candidateMedianMs)}</td>
                     <td className="num">
-                      <span className={`change-value ${changeClassName(l.percentageChange)}`}>{formatChangeText(l.percentageChange)}</span>
+                      <span className={`change-value ${changeClass(l)}`}>{formatChangeText(l.percentageChange)}</span>
                     </td>
                     <td className="num tnum sub">{formatMs(r.baselineMedianMs)}</td>
                     <td className="num tnum">{formatMs(r.candidateMedianMs)}</td>
                     <td className="num">
-                      <span className={`change-value ${changeClassName(r.percentageChange)}`}>{formatChangeText(r.percentageChange)}</span>
+                      <span className={`change-value ${changeClass(r)}`}>{formatChangeText(r.percentageChange)}</span>
                     </td>
                   </tr>
                 ))}

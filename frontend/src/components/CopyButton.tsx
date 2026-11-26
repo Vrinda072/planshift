@@ -21,7 +21,7 @@ export function CopyButton({ text }: { text: string }) {
 
   return (
     <button type="button" className={`copy-btn${copied ? " copied" : ""}`} onClick={copy}>
-      {copied ? "Copied" : "Copy"}
+      {copied ? "Copied" : "Copy SQL"}
     </button>
   );
 }
